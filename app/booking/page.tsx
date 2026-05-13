@@ -38,9 +38,9 @@ function BookingPageInner() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/settings/salon').then((r) => r.json()),
-      fetch('/api/settings/schedule').then((r) => r.json()),
-      fetch('/api/settings/booking-rules').then((r) => r.json()),
+      fetch('/api/settings/salon', { cache: 'no-store' }).then((r) => r.json()),
+      fetch('/api/settings/schedule', { cache: 'no-store' }).then((r) => r.json()),
+      fetch('/api/settings/booking-rules', { cache: 'no-store' }).then((r) => r.json()),
     ]).then(([salonData, scheduleData, rulesData]) => {
       setSalon(salonData);
       setBusinessHours(scheduleData.businessHours);
@@ -54,7 +54,7 @@ function BookingPageInner() {
     setSelectedTime(null);
     try {
       const dateStr = format(date, 'yyyy-MM-dd');
-      const res = await fetch(`/api/available-slots?date=${dateStr}&service_id=${serviceId}`);
+      const res = await fetch(`/api/available-slots?date=${dateStr}&service_id=${serviceId}`, { cache: 'no-store' });
       const data = await res.json();
       setTimeSlots(data.slots || []);
     } catch {
@@ -80,8 +80,8 @@ function BookingPageInner() {
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="py-6 px-4 text-center border-b border-gray-100">
+    <div className="min-h-screen bg-gray-50">
+      <header className="py-6 px-4 text-center border-b border-gray-100 bg-white">
         <a href="/" className="text-xl font-bold" style={{ color: primaryColor }}>
           {salon.logo_text}
         </a>

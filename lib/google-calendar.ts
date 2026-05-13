@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { getDB } from './db';
+import { dbGet, dbRun } from './db';
 
 const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID || 'primary';
 const ICAL_URL = process.env.GOOGLE_ICAL_URL || '';
@@ -40,17 +40,16 @@ export async function exchangeCodeForTokens(code: string) {
   return tokens;
 }
 
-export function saveTokensToDB(tokens: {
+export async function saveTokensToDB(tokens: {
   access_token?: string | null;
   refresh_token?: string | null;
   token_type?: string | null;
   expiry_date?: number | null;
   scope?: string | null;
 }, email?: string) {
-  const db = getDB();
   const now = new Date().toISOString();
 
-  const existing = db.prepare('SELECT * FROM google_tokens WHERE id = 1').get() as Record<string, unknown> | undefined;
+  const existing = await dbGet<Record<string, unknown>>('SELECT * FROM google_tokens WHERE id = 1');
 
   const accessToken = tokens.access_token || (existing?.access_token as string) || '';
   const refreshToken = tokens.refresh_token || (existing?.refresh_token as string) || '';
@@ -59,24 +58,22 @@ export function saveTokensToDB(tokens: {
   const scope = tokens.scope || (existing?.scope as string) || '';
   const connectedEmail = email || (existing?.connected_email as string) || '';
 
-  db.prepare(`
+  await dbRun(`
     UPDATE google_tokens SET
       access_token = ?, refresh_token = ?, token_type = ?,
       expiry_date = ?, scope = ?, connected_email = ?, updated_at = ?
     WHERE id = 1
-  `).run(accessToken, refreshToken, tokenType, expiryDate, scope, connectedEmail, now);
+  `, [accessToken, refreshToken, tokenType, expiryDate, scope, connectedEmail, now]);
 }
 
-export function getTokensFromDB(): {
+export async function getTokensFromDB(): Promise<{
   access_token: string;
   refresh_token: string;
   expiry_date: number;
   connected_email: string;
-} | null {
-  const db = getDB();
-  const row = db.prepare('SELECT * FROM google_tokens WHERE id = 1').get() as Record<string, unknown> | undefined;
+} | null> {
+  const row = await dbGet<Record<string, unknown>>('SELECT * FROM google_tokens WHERE id = 1');
   if (!row || (!row.access_token && !row.refresh_token)) return null;
-  if (!row.access_token && !row.refresh_token) return null;
 
   return {
     access_token: (row.access_token as string) || '',
@@ -86,22 +83,21 @@ export function getTokensFromDB(): {
   };
 }
 
-export function clearTokensFromDB() {
-  const db = getDB();
+export async function clearTokensFromDB() {
   const now = new Date().toISOString();
-  db.prepare(`
+  await dbRun(`
     UPDATE google_tokens SET
       access_token = '', refresh_token = '', token_type = 'Bearer',
       expiry_date = 0, scope = '', connected_email = '', updated_at = ?
     WHERE id = 1
-  `).run(now);
+  `, [now]);
 }
 
 async function getAuthenticatedClient() {
   const oauth2Client = getOAuth2Client();
   if (!oauth2Client) return null;
 
-  const tokens = getTokensFromDB();
+  const tokens = await getTokensFromDB();
   if (!tokens || (!tokens.access_token && !tokens.refresh_token)) return null;
 
   oauth2Client.setCredentials({
@@ -114,7 +110,7 @@ async function getAuthenticatedClient() {
     try {
       const { credentials } = await oauth2Client.refreshAccessToken();
       oauth2Client.setCredentials(credentials);
-      saveTokensToDB({
+      await saveTokensToDB({
         access_token: credentials.access_token,
         refresh_token: credentials.refresh_token || tokens.refresh_token,
         expiry_date: credentials.expiry_date,
@@ -145,7 +141,7 @@ export async function addEventToCalendar(params: {
 
   try {
     const calendar = google.calendar({ version: 'v3', auth });
-    const startDateTime = `${params.date}T${params.time}:00`;
+    const startDateTime = `${params.date}T${params.time}:00+09:00`;
     const startDate = new Date(startDateTime);
     const endDate = new Date(startDate.getTime() + params.duration * 60000);
 

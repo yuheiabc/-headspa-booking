@@ -4,10 +4,10 @@ import type { SalonSettings, Service, BookingRules } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
-export default function HomePage() {
-  const salon: SalonSettings = getSalonSettings();
-  const services: Service[] = getActiveServices();
-  const rules: BookingRules = getBookingRules();
+export default async function HomePage() {
+  const salon: SalonSettings = await getSalonSettings();
+  const services: Service[] = await getActiveServices();
+  const rules: BookingRules = await getBookingRules();
 
   if (!rules.booking_open) {
     return (
@@ -23,7 +23,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50">
       <header
         className="py-16 px-4 text-center text-white"
         style={{ backgroundColor: salon.hero_color }}

@@ -36,10 +36,12 @@ export default function HolidayManager({ holidays, onRefresh }: HolidayManagerPr
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: newDate, reason: newReason || '臨時休業' }),
+        cache: 'no-store',
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error);
+        let errorMsg = '追加に失敗しました';
+        try { const err = await res.json(); errorMsg = err.error || errorMsg; } catch { /* empty */ }
+        throw new Error(errorMsg);
       }
       toast.success('休業日を追加しました');
       setShowAdd(false);
@@ -55,12 +57,16 @@ export default function HolidayManager({ holidays, onRefresh }: HolidayManagerPr
 
   const handleDelete = async (id: number) => {
     try {
-      const res = await fetch(`/api/settings/schedule?id=${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error();
+      const res = await fetch(`/api/settings/schedule?id=${id}`, { method: 'DELETE', cache: 'no-store' });
+      if (!res.ok) {
+        let errorMsg = '削除に失敗しました';
+        try { const err = await res.json(); errorMsg = err.error || errorMsg; } catch { /* empty */ }
+        throw new Error(errorMsg);
+      }
       toast.success('休業日を削除しました');
       onRefresh();
-    } catch {
-      toast.error('削除に失敗しました');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '削除に失敗しました');
     }
   };
 

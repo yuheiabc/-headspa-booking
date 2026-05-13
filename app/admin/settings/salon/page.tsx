@@ -8,9 +8,10 @@ export default function SalonSettingsPage() {
   const [salon, setSalon] = useState<SalonSettings | null>(null);
 
   useEffect(() => {
-    fetch('/api/settings/salon')
+    fetch('/api/settings/salon', { cache: 'no-store' })
       .then((r) => r.json())
-      .then(setSalon);
+      .then(setSalon)
+      .catch(() => { /* fetch error */ });
   }, []);
 
   if (!salon) {

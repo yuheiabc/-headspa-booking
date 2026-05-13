@@ -14,7 +14,7 @@ export default function AdminDashboard() {
         const weekStart = format(startOfWeek(new Date()), 'yyyy-MM-dd');
         const weekEnd = format(endOfWeek(new Date()), 'yyyy-MM-dd');
 
-        const res = await fetch('/api/bookings');
+        const res = await fetch('/api/bookings', { cache: 'no-store' });
         const bookings = await res.json();
 
         const todayBookings = bookings.filter(

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db';
+import { dbGet, dbRun } from '@/lib/db';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 const salonSchema = z.object({
   salon_name: z.string().min(1, 'サロン名を入力してください').optional(),
@@ -17,41 +19,52 @@ const salonSchema = z.object({
   primary_color: z.string().optional(),
 });
 
+const noCacheHeaders = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+};
+
 export async function GET() {
   try {
-    const db = getDB();
-    const settings = db.prepare('SELECT * FROM salon_settings WHERE id = 1').get();
-    return NextResponse.json(settings);
-  } catch {
-    return NextResponse.json({ error: 'サロン情報の取得に失敗しました' }, { status: 500 });
+    const settings = await dbGet('SELECT * FROM salon_settings WHERE id = 1');
+    return NextResponse.json(settings, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('GET /api/settings/salon error:', err);
+    return NextResponse.json({ error: 'サロン情報の取得に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'リクエストデータの読み取りに失敗しました' }, { status: 400, headers: noCacheHeaders });
+    }
+
     const result = salonSchema.safeParse(body);
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400, headers: noCacheHeaders });
     }
 
-    const db = getDB();
     const fields = Object.keys(result.data).filter((k) => result.data[k as keyof typeof result.data] !== undefined);
     if (fields.length === 0) {
-      return NextResponse.json({ error: '更新するフィールドがありません' }, { status: 400 });
+      return NextResponse.json({ error: '更新するフィールドがありません' }, { status: 400, headers: noCacheHeaders });
     }
 
     const setClause = fields.map((f) => `${f} = ?`).join(', ');
-    const values = fields.map((f) => result.data[f as keyof typeof result.data]);
+    const values: unknown[] = fields.map((f) => result.data[f as keyof typeof result.data]);
     const now = new Date().toISOString();
+    values.push(now);
 
-    db.prepare(`UPDATE salon_settings SET ${setClause}, updated_at = ? WHERE id = 1`)
-      .run(...values, now);
+    await dbRun(`UPDATE salon_settings SET ${setClause}, updated_at = ? WHERE id = 1`, values);
 
-    const updated = db.prepare('SELECT * FROM salon_settings WHERE id = 1').get();
-    return NextResponse.json(updated);
-  } catch {
-    return NextResponse.json({ error: 'サロン情報の更新に失敗しました' }, { status: 500 });
+    const updated = await dbGet('SELECT * FROM salon_settings WHERE id = 1');
+    return NextResponse.json(updated, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('PUT /api/settings/salon error:', err);
+    return NextResponse.json({ error: 'サロン情報の更新に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }

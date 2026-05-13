@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db';
+import { dbAll, dbRun } from '@/lib/db';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 const businessHoursSchema = z.array(
   z.object({
@@ -16,82 +18,94 @@ const holidaySchema = z.object({
   reason: z.string().min(1, '理由を入力してください').default('臨時休業'),
 });
 
+const noCacheHeaders = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+};
+
 export async function GET() {
   try {
-    const db = getDB();
-    const businessHours = db.prepare('SELECT * FROM business_hours ORDER BY day_of_week ASC').all();
-    const specialHolidays = db.prepare('SELECT * FROM special_holidays ORDER BY date ASC').all();
+    const businessHours = await dbAll('SELECT * FROM business_hours ORDER BY day_of_week ASC');
+    const specialHolidays = await dbAll('SELECT * FROM special_holidays ORDER BY date ASC');
 
     const mappedHours = (businessHours as Array<Record<string, unknown>>).map((h) => ({
       ...h,
       is_open: Boolean(h.is_open),
     }));
 
-    return NextResponse.json({ businessHours: mappedHours, specialHolidays });
-  } catch {
-    return NextResponse.json({ error: '営業時間の取得に失敗しました' }, { status: 500 });
+    return NextResponse.json({ businessHours: mappedHours, specialHolidays }, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('GET /api/settings/schedule error:', err);
+    return NextResponse.json({ error: '営業時間の取得に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'リクエストデータの読み取りに失敗しました' }, { status: 400, headers: noCacheHeaders });
+    }
+
     const result = businessHoursSchema.safeParse(body.businessHours);
 
     if (!result.success) {
-      return NextResponse.json({ error: '営業時間データが不正です' }, { status: 400 });
+      return NextResponse.json({ error: '営業時間データが不正です' }, { status: 400, headers: noCacheHeaders });
     }
 
-    const db = getDB();
     const now = new Date().toISOString();
 
-    const updateStmt = db.prepare(
-      'UPDATE business_hours SET is_open = ?, open_time = ?, close_time = ?, updated_at = ? WHERE day_of_week = ?'
-    );
+    for (const h of result.data) {
+      await dbRun(
+        'UPDATE business_hours SET is_open = ?, open_time = ?, close_time = ?, updated_at = ? WHERE day_of_week = ?',
+        [h.is_open ? 1 : 0, h.open_time, h.close_time, now, h.day_of_week]
+      );
+    }
 
-    const updateAll = db.transaction((hours: typeof result.data) => {
-      for (const h of hours) {
-        updateStmt.run(h.is_open ? 1 : 0, h.open_time, h.close_time, now, h.day_of_week);
-      }
-    });
-
-    updateAll(result.data);
-
-    const updated = db.prepare('SELECT * FROM business_hours ORDER BY day_of_week ASC').all();
+    const updated = await dbAll('SELECT * FROM business_hours ORDER BY day_of_week ASC');
     const mapped = (updated as Array<Record<string, unknown>>).map((h) => ({
       ...h,
       is_open: Boolean(h.is_open),
     }));
 
-    return NextResponse.json({ businessHours: mapped });
-  } catch {
-    return NextResponse.json({ error: '営業時間の更新に失敗しました' }, { status: 500 });
+    return NextResponse.json({ businessHours: mapped }, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('PUT /api/settings/schedule error:', err);
+    return NextResponse.json({ error: '営業時間の更新に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'リクエストデータの読み取りに失敗しました' }, { status: 400, headers: noCacheHeaders });
+    }
+
     const result = holidaySchema.safeParse(body);
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400, headers: noCacheHeaders });
     }
 
-    const db = getDB();
     try {
-      db.prepare('INSERT INTO special_holidays (date, reason) VALUES (?, ?)').run(
+      await dbRun('INSERT INTO special_holidays (date, reason) VALUES (?, ?)', [
         result.data.date,
         result.data.reason
-      );
+      ]);
     } catch {
-      return NextResponse.json({ error: 'この日付は既に登録されています' }, { status: 400 });
+      return NextResponse.json({ error: 'この日付は既に登録されています' }, { status: 400, headers: noCacheHeaders });
     }
 
-    const holidays = db.prepare('SELECT * FROM special_holidays ORDER BY date ASC').all();
-    return NextResponse.json({ specialHolidays: holidays }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: '休業日の追加に失敗しました' }, { status: 500 });
+    const holidays = await dbAll('SELECT * FROM special_holidays ORDER BY date ASC');
+    return NextResponse.json({ specialHolidays: holidays }, { status: 201, headers: noCacheHeaders });
+  } catch (err) {
+    console.error('POST /api/settings/schedule error:', err);
+    return NextResponse.json({ error: '休業日の追加に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }
 
@@ -101,15 +115,15 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ error: 'IDを指定してください' }, { status: 400 });
+      return NextResponse.json({ error: 'IDを指定してください' }, { status: 400, headers: noCacheHeaders });
     }
 
-    const db = getDB();
-    db.prepare('DELETE FROM special_holidays WHERE id = ?').run(Number(id));
+    await dbRun('DELETE FROM special_holidays WHERE id = ?', [Number(id)]);
 
-    const holidays = db.prepare('SELECT * FROM special_holidays ORDER BY date ASC').all();
-    return NextResponse.json({ specialHolidays: holidays });
-  } catch {
-    return NextResponse.json({ error: '休業日の削除に失敗しました' }, { status: 500 });
+    const holidays = await dbAll('SELECT * FROM special_holidays ORDER BY date ASC');
+    return NextResponse.json({ specialHolidays: holidays }, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('DELETE /api/settings/schedule error:', err);
+    return NextResponse.json({ error: '休業日の削除に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }

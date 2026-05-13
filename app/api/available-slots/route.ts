@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db';
+import { dbGet, dbAll } from '@/lib/db';
 import { getBusinessHours, getSpecialHolidays, getBookingRules, isBusinessDay, generateTimeSlots } from '@/lib/settings';
 import { getCalendarEvents } from '@/lib/google-calendar';
 import type { TimeSlot } from '@/types';
+
+export const dynamic = 'force-dynamic';
+
+const noCacheHeaders = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,32 +18,31 @@ export async function GET(request: NextRequest) {
     const serviceId = searchParams.get('service_id');
 
     if (!date) {
-      return NextResponse.json({ error: '日付を指定してください' }, { status: 400 });
+      return NextResponse.json({ error: '日付を指定してください' }, { status: 400, headers: noCacheHeaders });
     }
 
-    const businessHours = getBusinessHours();
-    const specialHolidays = getSpecialHolidays();
-    const bookingRules = getBookingRules();
+    const businessHours = await getBusinessHours();
+    const specialHolidays = await getSpecialHolidays();
+    const bookingRules = await getBookingRules();
 
     const targetDate = new Date(date + 'T00:00:00+09:00');
 
     if (!isBusinessDay(targetDate, businessHours, specialHolidays)) {
-      return NextResponse.json({ slots: [], message: '定休日です' });
+      return NextResponse.json({ slots: [], message: '定休日です' }, { headers: noCacheHeaders });
     }
-
-    const db = getDB();
 
     let serviceDuration = 60;
     if (serviceId) {
-      const service = db.prepare('SELECT duration FROM services WHERE id = ?').get(serviceId) as { duration: number } | undefined;
+      const service = await dbGet<{ duration: number }>('SELECT duration FROM services WHERE id = ?', [serviceId]);
       if (service) serviceDuration = service.duration;
     }
 
     const allSlots = generateTimeSlots(targetDate, businessHours, bookingRules);
 
-    const existingBookings = db.prepare(
-      "SELECT time, duration FROM bookings WHERE date = ? AND status = 'confirmed'"
-    ).all(date) as Array<{ time: string; duration: number }>;
+    const existingBookings = await dbAll<{ time: string; duration: number }>(
+      "SELECT time, duration FROM bookings WHERE date = ? AND status = 'confirmed'",
+      [date]
+    );
 
     let calendarEvents: Array<{ start: string; end: string }> = [];
     try {
@@ -91,8 +97,9 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ slots: timeSlots });
-  } catch {
-    return NextResponse.json({ error: '空き枠の取得に失敗しました' }, { status: 500 });
+    return NextResponse.json({ slots: timeSlots }, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('GET /api/available-slots error:', err);
+    return NextResponse.json({ error: '空き枠の取得に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }

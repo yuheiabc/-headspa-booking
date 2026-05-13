@@ -16,7 +16,7 @@ export default function BookingsPage() {
       const params = new URLSearchParams();
       if (filter !== 'all') params.set('status', filter);
       if (dateFilter) params.set('date', dateFilter);
-      const res = await fetch(`/api/bookings?${params.toString()}`);
+      const res = await fetch(`/api/bookings?${params.toString()}`, { cache: 'no-store' });
       const data = await res.json();
       setBookings(Array.isArray(data) ? data : []);
     } catch {

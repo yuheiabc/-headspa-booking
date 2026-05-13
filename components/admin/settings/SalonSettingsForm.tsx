@@ -24,10 +24,15 @@ export default function SalonSettingsForm({ initialData }: SalonSettingsFormProp
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+        cache: 'no-store',
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error);
+        let errorMsg = '保存に失敗しました';
+        try {
+          const err = await res.json();
+          errorMsg = err.error || errorMsg;
+        } catch { /* response body may be empty */ }
+        throw new Error(errorMsg);
       }
       toast.success('サロン情報を更新しました');
     } catch (err) {

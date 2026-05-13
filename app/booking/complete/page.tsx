@@ -26,7 +26,7 @@ function CompletePageInner() {
   const [salon, setSalon] = useState<SalonSettings | null>(null);
 
   useEffect(() => {
-    fetch('/api/settings/salon')
+    fetch('/api/settings/salon', { cache: 'no-store' })
       .then((r) => r.json())
       .then(setSalon);
   }, []);
@@ -34,7 +34,7 @@ function CompletePageInner() {
   const primaryColor = salon?.primary_color || '#C9A96E';
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
       <div className="max-w-md w-full text-center">
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"
@@ -51,11 +51,11 @@ function CompletePageInner() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-left space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-500">メニュー</span>
-            <span className="font-medium">{serviceName}</span>
+            <span className="font-medium text-gray-900">{serviceName}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">日時</span>
-            <span className="font-medium">{date} {time}〜</span>
+            <span className="font-medium text-gray-900">{date} {time}〜</span>
           </div>
         </div>
 

@@ -10,7 +10,7 @@ export default function ServicesSettingsPage() {
 
   const fetchServices = useCallback(async () => {
     try {
-      const res = await fetch('/api/settings/services');
+      const res = await fetch('/api/settings/services', { cache: 'no-store' });
       const data = await res.json();
       setServices(data);
     } catch {

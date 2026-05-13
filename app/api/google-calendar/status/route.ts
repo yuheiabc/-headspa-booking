@@ -6,7 +6,7 @@ export async function GET() {
   const clientId = process.env.GOOGLE_CLIENT_ID || '';
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
 
-  const tokens = getTokensFromDB();
+  const tokens = await getTokensFromDB();
   const hasTokens = !!(tokens && (tokens.access_token || tokens.refresh_token));
 
   return NextResponse.json({
@@ -19,6 +19,6 @@ export async function GET() {
 }
 
 export async function DELETE() {
-  clearTokensFromDB();
+  await clearTokensFromDB();
   return NextResponse.json({ success: true });
 }

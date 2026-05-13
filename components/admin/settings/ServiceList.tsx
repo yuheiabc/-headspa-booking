@@ -33,11 +33,16 @@ export default function ServiceList({ services, onRefresh }: ServiceListProps) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orders }),
+        cache: 'no-store',
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        let errorMsg = '並び順の更新に失敗しました';
+        try { const err = await res.json(); errorMsg = err.error || errorMsg; } catch { /* empty */ }
+        throw new Error(errorMsg);
+      }
       toast.success('並び順を更新しました');
-    } catch {
-      toast.error('並び順の更新に失敗しました');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '並び順の更新に失敗しました');
       onRefresh();
     }
   };
@@ -48,14 +53,19 @@ export default function ServiceList({ services, onRefresh }: ServiceListProps) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !service.is_active }),
+        cache: 'no-store',
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        let errorMsg = '更新に失敗しました';
+        try { const err = await res.json(); errorMsg = err.error || errorMsg; } catch { /* empty */ }
+        throw new Error(errorMsg);
+      }
       setItems((prev) =>
         prev.map((s) => (s.id === service.id ? { ...s, is_active: !s.is_active } : s))
       );
       toast.success(service.is_active ? '非公開にしました' : '公開しました');
-    } catch {
-      toast.error('更新に失敗しました');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '更新に失敗しました');
     }
   };
 
@@ -65,10 +75,12 @@ export default function ServiceList({ services, onRefresh }: ServiceListProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+        cache: 'no-store',
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error);
+        let errorMsg = '追加に失敗しました';
+        try { const err = await res.json(); errorMsg = err.error || errorMsg; } catch { /* empty */ }
+        throw new Error(errorMsg);
       }
       toast.success('メニューを追加しました');
       setShowAddModal(false);
@@ -85,10 +97,12 @@ export default function ServiceList({ services, onRefresh }: ServiceListProps) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+        cache: 'no-store',
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error);
+        let errorMsg = '更新に失敗しました';
+        try { const err = await res.json(); errorMsg = err.error || errorMsg; } catch { /* empty */ }
+        throw new Error(errorMsg);
       }
       toast.success('メニューを更新しました');
       setEditingService(null);
@@ -101,13 +115,20 @@ export default function ServiceList({ services, onRefresh }: ServiceListProps) {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      const res = await fetch(`/api/settings/services/${deleteTarget.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error();
+      const res = await fetch(`/api/settings/services/${deleteTarget.id}`, {
+        method: 'DELETE',
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        let errorMsg = '削除に失敗しました';
+        try { const err = await res.json(); errorMsg = err.error || errorMsg; } catch { /* empty */ }
+        throw new Error(errorMsg);
+      }
       toast.success('メニューを削除しました');
       setDeleteTarget(null);
       onRefresh();
-    } catch {
-      toast.error('削除に失敗しました');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '削除に失敗しました');
     }
   };
 

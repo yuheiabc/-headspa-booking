@@ -1,29 +1,37 @@
-import Database from 'better-sqlite3';
-import path from 'path';
+import { createClient, type Client, type ResultSet, type InValue } from '@libsql/client';
 
-let db: Database.Database | null = null;
+let client: Client | null = null;
 
-export function getDB(): Database.Database {
-  if (db) return db;
+function getClient(): Client {
+  if (client) return client;
 
-  const dbPath = path.join(process.cwd(), 'data', 'headspa.db');
-  const fs = require('fs');
-  const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  const url = process.env.TURSO_DATABASE_URL;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
+
+  if (url) {
+    client = createClient({ url, authToken });
+  } else {
+    // ローカル開発用: ファイルベースSQLite
+    const path = require('path');
+    const fs = require('fs');
+    const dbDir = path.join(process.cwd(), 'data');
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+    client = createClient({ url: `file:${path.join(dbDir, 'headspa.db')}` });
   }
 
-  db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
-
-  initDB(db);
-
-  return db;
+  return client;
 }
 
-function initDB(db: Database.Database): void {
-  db.exec(`
+// 初期化済みフラグ
+let initialized = false;
+
+async function initDB(): Promise<void> {
+  if (initialized) return;
+  const c = getClient();
+
+  await c.executeMultiple(`
     CREATE TABLE IF NOT EXISTS bookings (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -110,34 +118,74 @@ function initDB(db: Database.Database): void {
       booking_closed_message TEXT DEFAULT '現在予約を受け付けておりません',
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    INSERT OR IGNORE INTO salon_settings (id) VALUES (1);
+    INSERT OR IGNORE INTO booking_rules (id) VALUES (1);
+    INSERT OR IGNORE INTO google_tokens (id) VALUES (1);
   `);
 
-  db.exec(`INSERT OR IGNORE INTO salon_settings (id) VALUES (1);`);
-  db.exec(`INSERT OR IGNORE INTO booking_rules (id) VALUES (1);`);
-  db.exec(`INSERT OR IGNORE INTO google_tokens (id) VALUES (1);`);
-
-  const bhCount = db.prepare('SELECT COUNT(*) as count FROM business_hours').get() as { count: number };
-  if (bhCount.count === 0) {
-    db.exec(`
+  // 営業時間の初期データ
+  const bhCount = await c.execute('SELECT COUNT(*) as count FROM business_hours');
+  if (Number(bhCount.rows[0].count) === 0) {
+    await c.executeMultiple(`
       INSERT INTO business_hours (day_of_week, is_open, open_time, close_time) VALUES
-        (0, 0, '10:00', '20:00'),
-        (1, 1, '10:00', '20:00'),
-        (2, 1, '10:00', '20:00'),
-        (3, 1, '10:00', '20:00'),
-        (4, 1, '10:00', '20:00'),
-        (5, 1, '10:00', '20:00'),
+        (0, 0, '10:00', '20:00');
+      INSERT INTO business_hours (day_of_week, is_open, open_time, close_time) VALUES
+        (1, 1, '10:00', '20:00');
+      INSERT INTO business_hours (day_of_week, is_open, open_time, close_time) VALUES
+        (2, 1, '10:00', '20:00');
+      INSERT INTO business_hours (day_of_week, is_open, open_time, close_time) VALUES
+        (3, 1, '10:00', '20:00');
+      INSERT INTO business_hours (day_of_week, is_open, open_time, close_time) VALUES
+        (4, 1, '10:00', '20:00');
+      INSERT INTO business_hours (day_of_week, is_open, open_time, close_time) VALUES
+        (5, 1, '10:00', '20:00');
+      INSERT INTO business_hours (day_of_week, is_open, open_time, close_time) VALUES
         (6, 1, '10:00', '20:00');
     `);
   }
 
-  const svcCount = db.prepare('SELECT COUNT(*) as count FROM services').get() as { count: number };
-  if (svcCount.count === 0) {
-    db.exec(`
+  // メニューの初期データ
+  const svcCount = await c.execute('SELECT COUNT(*) as count FROM services');
+  if (Number(svcCount.rows[0].count) === 0) {
+    await c.executeMultiple(`
       INSERT INTO services (id, name, duration, price, description, sort_order) VALUES
-        ('head-spa-60', 'ヘッドスパ 60分', 60, 8800, '頭皮クレンジング＋スパトリートメント', 1),
-        ('head-spa-90', 'ヘッドスパ 90分', 90, 12100, '60分コース＋ヘッドマッサージ', 2),
-        ('head-spa-120', 'プレミアムスパ 120分', 120, 16500, '全身リラクゼーション＋プレミアムトリートメント', 3),
+        ('head-spa-60', 'ヘッドスパ 60分', 60, 8800, '頭皮クレンジング＋スパトリートメント', 1);
+      INSERT INTO services (id, name, duration, price, description, sort_order) VALUES
+        ('head-spa-90', 'ヘッドスパ 90分', 90, 12100, '60分コース＋ヘッドマッサージ', 2);
+      INSERT INTO services (id, name, duration, price, description, sort_order) VALUES
+        ('head-spa-120', 'プレミアムスパ 120分', 120, 16500, '全身リラクゼーション＋プレミアムトリートメント', 3);
+      INSERT INTO services (id, name, duration, price, description, sort_order) VALUES
         ('scalp-care', '頭皮ケア 45分', 45, 6600, '頭皮診断＋集中ケアトリートメント', 4);
     `);
   }
+
+  initialized = true;
+}
+
+// ---- 同期的APIの代わりに非同期ヘルパー ----
+
+export async function dbExecute(sql: string, args?: Record<string, unknown> | unknown[]): Promise<ResultSet> {
+  await initDB();
+  const c = getClient();
+  if (args && Array.isArray(args)) {
+    return c.execute({ sql, args: args as InValue[] });
+  } else if (args) {
+    return c.execute({ sql, args: args as Record<string, InValue> });
+  }
+  return c.execute(sql);
+}
+
+export async function dbAll<T = Record<string, unknown>>(sql: string, args?: Record<string, unknown> | unknown[]): Promise<T[]> {
+  const result = await dbExecute(sql, args);
+  return result.rows as unknown as T[];
+}
+
+export async function dbGet<T = Record<string, unknown>>(sql: string, args?: Record<string, unknown> | unknown[]): Promise<T | undefined> {
+  const rows = await dbAll<T>(sql, args);
+  return rows[0];
+}
+
+export async function dbRun(sql: string, args?: Record<string, unknown> | unknown[]): Promise<ResultSet> {
+  return dbExecute(sql, args);
 }

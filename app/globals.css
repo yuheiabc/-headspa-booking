@@ -2,28 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ダークモード無効化：常にライトモードで表示 */
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+  color-scheme: light;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  color: #111827;
+  background-color: #ffffff;
+}
+
+/* フォーム要素の文字色を明示的に指定（ブラウザダークモードでも白on白にならない） */
+@layer base {
+  input,
+  textarea,
+  select {
+    color: #111827;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af;
+  }
 }
 
 @layer utilities {

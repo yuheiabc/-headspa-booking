@@ -1,40 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db';
+import { dbGet, dbRun } from '@/lib/db';
 import { deleteEventFromCalendar } from '@/lib/google-calendar';
+
+export const dynamic = 'force-dynamic';
+
+const noCacheHeaders = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+};
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const db = getDB();
-    const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(params.id);
+    const { id } = await Promise.resolve(context.params);
+    const booking = await dbGet('SELECT * FROM bookings WHERE id = ?', [id]);
     if (!booking) {
-      return NextResponse.json({ error: '予約が見つかりません' }, { status: 404 });
+      return NextResponse.json({ error: '予約が見つかりません' }, { status: 404, headers: noCacheHeaders });
     }
-    return NextResponse.json(booking);
-  } catch {
-    return NextResponse.json({ error: '予約の取得に失敗しました' }, { status: 500 });
+    return NextResponse.json(booking, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('GET /api/bookings/[id] error:', err);
+    return NextResponse.json({ error: '予約の取得に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const db = getDB();
-    const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(params.id) as Record<string, unknown> | undefined;
+    const { id } = await Promise.resolve(context.params);
+    const booking = await dbGet<Record<string, unknown>>('SELECT * FROM bookings WHERE id = ?', [id]);
     if (!booking) {
-      return NextResponse.json({ error: '予約が見つかりません' }, { status: 404 });
+      return NextResponse.json({ error: '予約が見つかりません' }, { status: 404, headers: noCacheHeaders });
     }
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'リクエストデータの読み取りに失敗しました' }, { status: 400, headers: noCacheHeaders });
+    }
+
     const now = new Date().toISOString();
 
     if (body.status) {
-      db.prepare('UPDATE bookings SET status = ?, updated_at = ? WHERE id = ?')
-        .run(body.status, now, params.id);
+      await dbRun('UPDATE bookings SET status = ?, updated_at = ? WHERE id = ?', [body.status, now, id]);
 
       if (body.status === 'cancelled' && booking.google_event_id) {
         try {
@@ -46,26 +59,26 @@ export async function PUT(
     }
 
     if (body.notes !== undefined) {
-      db.prepare('UPDATE bookings SET notes = ?, updated_at = ? WHERE id = ?')
-        .run(body.notes, now, params.id);
+      await dbRun('UPDATE bookings SET notes = ?, updated_at = ? WHERE id = ?', [body.notes, now, id]);
     }
 
-    const updated = db.prepare('SELECT * FROM bookings WHERE id = ?').get(params.id);
-    return NextResponse.json(updated);
-  } catch {
-    return NextResponse.json({ error: '予約の更新に失敗しました' }, { status: 500 });
+    const updated = await dbGet('SELECT * FROM bookings WHERE id = ?', [id]);
+    return NextResponse.json(updated, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('PUT /api/bookings/[id] error:', err);
+    return NextResponse.json({ error: '予約の更新に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const db = getDB();
-    const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(params.id) as Record<string, unknown> | undefined;
+    const { id } = await Promise.resolve(context.params);
+    const booking = await dbGet<Record<string, unknown>>('SELECT * FROM bookings WHERE id = ?', [id]);
     if (!booking) {
-      return NextResponse.json({ error: '予約が見つかりません' }, { status: 404 });
+      return NextResponse.json({ error: '予約が見つかりません' }, { status: 404, headers: noCacheHeaders });
     }
 
     if (booking.google_event_id) {
@@ -76,9 +89,10 @@ export async function DELETE(
       }
     }
 
-    db.prepare('DELETE FROM bookings WHERE id = ?').run(params.id);
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: '予約の削除に失敗しました' }, { status: 500 });
+    await dbRun('DELETE FROM bookings WHERE id = ?', [id]);
+    return NextResponse.json({ success: true }, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('DELETE /api/bookings/[id] error:', err);
+    return NextResponse.json({ error: '予約の削除に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }

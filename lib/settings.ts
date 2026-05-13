@@ -1,44 +1,38 @@
-import { getDB } from './db';
+import { dbGet, dbAll } from './db';
 import type { SalonSettings, Service, BusinessHours, SpecialHoliday, BookingRules } from '@/types';
 
-export function getSalonSettings(): SalonSettings {
-  const db = getDB();
-  const row = db.prepare('SELECT * FROM salon_settings WHERE id = 1').get() as SalonSettings;
-  return row;
+export async function getSalonSettings(): Promise<SalonSettings> {
+  const row = await dbGet<SalonSettings>('SELECT * FROM salon_settings WHERE id = 1');
+  return row!;
 }
 
-export function getActiveServices(): Service[] {
-  const db = getDB();
-  const rows = db.prepare('SELECT * FROM services WHERE is_active = 1 ORDER BY sort_order ASC').all() as Array<Record<string, unknown>>;
+export async function getActiveServices(): Promise<Service[]> {
+  const rows = await dbAll<Record<string, unknown>>('SELECT * FROM services WHERE is_active = 1 ORDER BY sort_order ASC');
   return rows.map(mapService);
 }
 
-export function getAllServices(): Service[] {
-  const db = getDB();
-  const rows = db.prepare('SELECT * FROM services ORDER BY sort_order ASC').all() as Array<Record<string, unknown>>;
+export async function getAllServices(): Promise<Service[]> {
+  const rows = await dbAll<Record<string, unknown>>('SELECT * FROM services ORDER BY sort_order ASC');
   return rows.map(mapService);
 }
 
-export function getBusinessHours(): BusinessHours[] {
-  const db = getDB();
-  const rows = db.prepare('SELECT * FROM business_hours ORDER BY day_of_week ASC').all() as Array<Record<string, unknown>>;
+export async function getBusinessHours(): Promise<BusinessHours[]> {
+  const rows = await dbAll<Record<string, unknown>>('SELECT * FROM business_hours ORDER BY day_of_week ASC');
   return rows.map((r) => ({
     ...r,
     is_open: Boolean(r.is_open),
   })) as BusinessHours[];
 }
 
-export function getSpecialHolidays(): SpecialHoliday[] {
-  const db = getDB();
-  return db.prepare('SELECT * FROM special_holidays ORDER BY date ASC').all() as SpecialHoliday[];
+export async function getSpecialHolidays(): Promise<SpecialHoliday[]> {
+  return dbAll<SpecialHoliday>('SELECT * FROM special_holidays ORDER BY date ASC');
 }
 
-export function getBookingRules(): BookingRules {
-  const db = getDB();
-  const row = db.prepare('SELECT * FROM booking_rules WHERE id = 1').get() as Record<string, unknown>;
+export async function getBookingRules(): Promise<BookingRules> {
+  const row = await dbGet<Record<string, unknown>>('SELECT * FROM booking_rules WHERE id = 1');
   return {
     ...row,
-    booking_open: Boolean(row.booking_open),
+    booking_open: Boolean(row!.booking_open),
   } as BookingRules;
 }
 

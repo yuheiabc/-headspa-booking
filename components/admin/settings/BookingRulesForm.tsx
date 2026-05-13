@@ -20,11 +20,19 @@ export default function BookingRulesForm({ initialData }: BookingRulesFormProps)
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+        cache: 'no-store',
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        let errorMsg = '保存に失敗しました';
+        try {
+          const err = await res.json();
+          errorMsg = err.error || errorMsg;
+        } catch { /* response body may be empty */ }
+        throw new Error(errorMsg);
+      }
       toast.success('予約ルールを保存しました');
-    } catch {
-      toast.error('保存に失敗しました');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '保存に失敗しました');
     } finally {
       setSaving(false);
     }

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       // メール取得は任意
     }
 
-    saveTokensToDB({
+    await saveTokensToDB({
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
       token_type: tokens.token_type,

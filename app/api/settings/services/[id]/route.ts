@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db';
+import { dbGet, dbRun } from '@/lib/db';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 const updateServiceSchema = z.object({
   name: z.string().min(1).max(50).optional(),
@@ -12,38 +14,50 @@ const updateServiceSchema = z.object({
   sort_order: z.number().int().optional(),
 });
 
+const noCacheHeaders = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+};
+
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const db = getDB();
-    const service = db.prepare('SELECT * FROM services WHERE id = ?').get(params.id) as Record<string, unknown> | undefined;
+    const { id } = await Promise.resolve(context.params);
+    const service = await dbGet<Record<string, unknown>>('SELECT * FROM services WHERE id = ?', [id]);
     if (!service) {
-      return NextResponse.json({ error: 'メニューが見つかりません' }, { status: 404 });
+      return NextResponse.json({ error: 'メニューが見つかりません' }, { status: 404, headers: noCacheHeaders });
     }
-    return NextResponse.json({ ...service, is_active: Boolean(service.is_active) });
-  } catch {
-    return NextResponse.json({ error: 'メニューの取得に失敗しました' }, { status: 500 });
+    return NextResponse.json({ ...service, is_active: Boolean(service.is_active) }, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('GET /api/settings/services/[id] error:', err);
+    return NextResponse.json({ error: 'メニューの取得に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const db = getDB();
-    const existing = db.prepare('SELECT * FROM services WHERE id = ?').get(params.id);
+    const { id } = await Promise.resolve(context.params);
+    const existing = await dbGet('SELECT * FROM services WHERE id = ?', [id]);
     if (!existing) {
-      return NextResponse.json({ error: 'メニューが見つかりません' }, { status: 404 });
+      return NextResponse.json({ error: 'メニューが見つかりません' }, { status: 404, headers: noCacheHeaders });
     }
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'リクエストデータの読み取りに失敗しました' }, { status: 400, headers: noCacheHeaders });
+    }
+
     const result = updateServiceSchema.safeParse(body);
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400, headers: noCacheHeaders });
     }
 
     const updates: Record<string, unknown> = {};
@@ -57,47 +71,50 @@ export async function PUT(
 
     const fields = Object.keys(updates);
     if (fields.length === 0) {
-      return NextResponse.json({ error: '更新するフィールドがありません' }, { status: 400 });
+      return NextResponse.json({ error: '更新するフィールドがありません' }, { status: 400, headers: noCacheHeaders });
     }
 
     const now = new Date().toISOString();
     const setClause = fields.map((f) => `${f} = ?`).join(', ');
-    const values = fields.map((f) => updates[f]);
+    const values: unknown[] = fields.map((f) => updates[f]);
+    values.push(now, id);
 
-    db.prepare(`UPDATE services SET ${setClause}, updated_at = ? WHERE id = ?`)
-      .run(...values, now, params.id);
+    await dbRun(`UPDATE services SET ${setClause}, updated_at = ? WHERE id = ?`, values);
 
-    const updated = db.prepare('SELECT * FROM services WHERE id = ?').get(params.id) as Record<string, unknown>;
-    return NextResponse.json({ ...updated, is_active: Boolean(updated.is_active) });
-  } catch {
-    return NextResponse.json({ error: 'メニューの更新に失敗しました' }, { status: 500 });
+    const updated = await dbGet<Record<string, unknown>>('SELECT * FROM services WHERE id = ?', [id]);
+    return NextResponse.json({ ...updated, is_active: Boolean(updated!.is_active) }, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('PUT /api/settings/services/[id] error:', err);
+    return NextResponse.json({ error: 'メニューの更新に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const db = getDB();
-    const service = db.prepare('SELECT * FROM services WHERE id = ?').get(params.id);
+    const { id } = await Promise.resolve(context.params);
+    const service = await dbGet('SELECT * FROM services WHERE id = ?', [id]);
     if (!service) {
-      return NextResponse.json({ error: 'メニューが見つかりません' }, { status: 404 });
+      return NextResponse.json({ error: 'メニューが見つかりません' }, { status: 404, headers: noCacheHeaders });
     }
 
-    const bookingCount = db.prepare(
-      "SELECT COUNT(*) as count FROM bookings WHERE service_id = ? AND status = 'confirmed'"
-    ).get(params.id) as { count: number };
+    const bookingCount = await dbGet<{ count: number }>(
+      "SELECT COUNT(*) as count FROM bookings WHERE service_id = ? AND status = 'confirmed'",
+      [id]
+    );
 
-    if (bookingCount.count > 0) {
+    if ((bookingCount?.count ?? 0) > 0) {
       const now = new Date().toISOString();
-      db.prepare('UPDATE services SET is_active = 0, updated_at = ? WHERE id = ?').run(now, params.id);
-      return NextResponse.json({ message: '既存の予約があるため、非公開にしました', deactivated: true });
+      await dbRun('UPDATE services SET is_active = 0, updated_at = ? WHERE id = ?', [now, id]);
+      return NextResponse.json({ message: '既存の予約があるため、非公開にしました', deactivated: true }, { headers: noCacheHeaders });
     }
 
-    db.prepare('DELETE FROM services WHERE id = ?').run(params.id);
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: 'メニューの削除に失敗しました' }, { status: 500 });
+    await dbRun('DELETE FROM services WHERE id = ?', [id]);
+    return NextResponse.json({ success: true }, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('DELETE /api/settings/services/[id] error:', err);
+    return NextResponse.json({ error: 'メニューの削除に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }

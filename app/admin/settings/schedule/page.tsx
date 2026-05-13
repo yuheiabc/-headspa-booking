@@ -12,7 +12,7 @@ export default function ScheduleSettingsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/settings/schedule');
+      const res = await fetch('/api/settings/schedule', { cache: 'no-store' });
       const data = await res.json();
       setBusinessHours(data.businessHours);
       setHolidays(data.specialHolidays);

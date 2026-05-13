@@ -8,9 +8,10 @@ export default function BookingRulesSettingsPage() {
   const [rules, setRules] = useState<BookingRules | null>(null);
 
   useEffect(() => {
-    fetch('/api/settings/booking-rules')
+    fetch('/api/settings/booking-rules', { cache: 'no-store' })
       .then((r) => r.json())
-      .then(setRules);
+      .then(setRules)
+      .catch(() => { /* fetch error */ });
   }, []);
 
   if (!rules) {

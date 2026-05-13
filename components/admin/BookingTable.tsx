@@ -20,12 +20,17 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
+        cache: 'no-store',
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        let errorMsg = '更新に失敗しました';
+        try { const err = await res.json(); errorMsg = err.error || errorMsg; } catch { /* empty */ }
+        throw new Error(errorMsg);
+      }
       toast.success('ステータスを更新しました');
       onUpdate();
-    } catch {
-      toast.error('更新に失敗しました');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '更新に失敗しました');
     } finally {
       setLoadingId(null);
     }
@@ -57,16 +62,16 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
           {bookings.map((booking) => (
             <tr key={booking.id} className="border-b border-gray-100 hover:bg-gray-50">
               <td className="py-3 px-4">
-                <div className="font-medium">{booking.date}</div>
+                <div className="font-medium text-gray-900">{booking.date}</div>
                 <div className="text-gray-500">{booking.time}〜</div>
               </td>
-              <td className="py-3 px-4 font-medium">{booking.name}</td>
+              <td className="py-3 px-4 font-medium text-gray-900">{booking.name}</td>
               <td className="py-3 px-4">
-                <div>{booking.service_name}</div>
+                <div className="text-gray-900">{booking.service_name}</div>
                 <div className="text-gray-500">{booking.duration}分</div>
               </td>
-              <td className="py-3 px-4">{booking.phone}</td>
-              <td className="py-3 px-4 font-medium">¥{booking.price.toLocaleString()}</td>
+              <td className="py-3 px-4 text-gray-900">{booking.phone}</td>
+              <td className="py-3 px-4 font-medium text-gray-900">¥{booking.price.toLocaleString()}</td>
               <td className="py-3 px-4"><StatusBadge status={booking.status} /></td>
               <td className="py-3 px-4">
                 {booking.status === 'confirmed' && (

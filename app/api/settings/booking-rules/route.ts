@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db';
+import { dbGet, dbRun } from '@/lib/db';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 const bookingRulesSchema = z.object({
   slot_interval: z.number().int().min(15).max(120).optional(),
@@ -12,26 +14,36 @@ const bookingRulesSchema = z.object({
   booking_closed_message: z.string().optional(),
 });
 
+const noCacheHeaders = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+};
+
 export async function GET() {
   try {
-    const db = getDB();
-    const rules = db.prepare('SELECT * FROM booking_rules WHERE id = 1').get() as Record<string, unknown>;
-    return NextResponse.json({ ...rules, booking_open: Boolean(rules.booking_open) });
-  } catch {
-    return NextResponse.json({ error: '予約ルールの取得に失敗しました' }, { status: 500 });
+    const rules = await dbGet<Record<string, unknown>>('SELECT * FROM booking_rules WHERE id = 1');
+    return NextResponse.json({ ...rules, booking_open: Boolean(rules!.booking_open) }, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('GET /api/settings/booking-rules error:', err);
+    return NextResponse.json({ error: '予約ルールの取得に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'リクエストデータの読み取りに失敗しました' }, { status: 400, headers: noCacheHeaders });
+    }
+
     const result = bookingRulesSchema.safeParse(body);
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400, headers: noCacheHeaders });
     }
 
-    const db = getDB();
     const updates: Record<string, unknown> = {};
 
     if (result.data.slot_interval !== undefined) updates.slot_interval = result.data.slot_interval;
@@ -44,19 +56,20 @@ export async function PUT(request: NextRequest) {
 
     const fields = Object.keys(updates);
     if (fields.length === 0) {
-      return NextResponse.json({ error: '更新するフィールドがありません' }, { status: 400 });
+      return NextResponse.json({ error: '更新するフィールドがありません' }, { status: 400, headers: noCacheHeaders });
     }
 
     const now = new Date().toISOString();
     const setClause = fields.map((f) => `${f} = ?`).join(', ');
-    const values = fields.map((f) => updates[f]);
+    const values: unknown[] = fields.map((f) => updates[f]);
+    values.push(now);
 
-    db.prepare(`UPDATE booking_rules SET ${setClause}, updated_at = ? WHERE id = 1`)
-      .run(...values, now);
+    await dbRun(`UPDATE booking_rules SET ${setClause}, updated_at = ? WHERE id = 1`, values);
 
-    const updated = db.prepare('SELECT * FROM booking_rules WHERE id = 1').get() as Record<string, unknown>;
-    return NextResponse.json({ ...updated, booking_open: Boolean(updated.booking_open) });
-  } catch {
-    return NextResponse.json({ error: '予約ルールの更新に失敗しました' }, { status: 500 });
+    const updated = await dbGet<Record<string, unknown>>('SELECT * FROM booking_rules WHERE id = 1');
+    return NextResponse.json({ ...updated, booking_open: Boolean(updated!.booking_open) }, { headers: noCacheHeaders });
+  } catch (err) {
+    console.error('PUT /api/settings/booking-rules error:', err);
+    return NextResponse.json({ error: '予約ルールの更新に失敗しました' }, { status: 500, headers: noCacheHeaders });
   }
 }

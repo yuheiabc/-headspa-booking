@@ -55,6 +55,7 @@ export default function BookingForm({
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
         body: JSON.stringify({
           name: name.trim(),
           phone: phone.trim(),
@@ -67,8 +68,12 @@ export default function BookingForm({
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || '予約に失敗しました');
+        let errorMsg = '予約に失敗しました';
+        try {
+          const data = await res.json();
+          errorMsg = data.error || errorMsg;
+        } catch { /* response body may be empty */ }
+        throw new Error(errorMsg);
       }
 
       const booking = await res.json();
@@ -94,15 +99,15 @@ export default function BookingForm({
         <div className="bg-gray-50 rounded-xl p-6 space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-500">メニュー</span>
-            <span className="font-medium">{serviceName}</span>
+            <span className="font-medium text-gray-900">{serviceName}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">日時</span>
-            <span className="font-medium">{date} {time}〜</span>
+            <span className="font-medium text-gray-900">{date} {time}〜</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">所要時間</span>
-            <span className="font-medium">{duration}分</span>
+            <span className="font-medium text-gray-900">{duration}分</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">料金</span>
@@ -111,22 +116,22 @@ export default function BookingForm({
           <hr className="border-gray-200" />
           <div className="flex justify-between">
             <span className="text-gray-500">お名前</span>
-            <span className="font-medium">{name}</span>
+            <span className="font-medium text-gray-900">{name}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">電話番号</span>
-            <span className="font-medium">{phone}</span>
+            <span className="font-medium text-gray-900">{phone}</span>
           </div>
           {email && (
             <div className="flex justify-between">
               <span className="text-gray-500">メール</span>
-              <span className="font-medium">{email}</span>
+              <span className="font-medium text-gray-900">{email}</span>
             </div>
           )}
           {notes && (
             <div className="flex justify-between">
               <span className="text-gray-500">備考</span>
-              <span className="font-medium">{notes}</span>
+              <span className="font-medium text-gray-900">{notes}</span>
             </div>
           )}
         </div>
