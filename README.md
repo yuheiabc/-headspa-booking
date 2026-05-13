@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# HeadSpa 予約サイト
 
-## Getting Started
+ヘッドスパサロン向けの予約管理システム。LINEからのリンク先として使用可能。
 
-First, run the development server:
+## 技術スタック
+
+- **Frontend**: Next.js 14 (App Router) + TypeScript + Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Database**: SQLite (better-sqlite3)
+- **Google連携**: Google Calendar API
+
+## セットアップ
 
 ```bash
+cd headspa-booking
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 でアクセス可能。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 管理者ログイン
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+- URL: http://localhost:3000/admin/login
+- Email: `admin@headspa.com`
+- Password: `headspa2024`
 
-## Learn More
+`.env.local` で変更可能。
 
-To learn more about Next.js, take a look at the following resources:
+## 環境変数
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`.env.local` を編集:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+```env
+ADMIN_EMAIL=admin@headspa.com
+ADMIN_PASSWORD=headspa2024
+JWT_SECRET=your-super-secret-jwt-key-change-this
+```
 
-## Deploy on Vercel
+## Google Calendar 連携（任意）
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクト作成
+2. Google Calendar API を有効化
+3. 「認証情報」→「OAuth 2.0 クライアント ID」を作成
+   - アプリケーションの種類: ウェブアプリケーション
+   - 承認済みリダイレクト URI: `http://localhost:3000/api/auth/callback/google`
+4. `.env.local` に設定:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+```env
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/callback/google
+GOOGLE_CALENDAR_ID=primary
+GOOGLE_ACCESS_TOKEN=your-access-token
+GOOGLE_REFRESH_TOKEN=your-refresh-token
+```
+
+Google連携が未設定でも予約機能は正常に動作します（DB のみで管理）。
+
+## 管理画面の機能
+
+| カテゴリ | 内容 |
+|---------|------|
+| サロン情報 | 店名・キャッチコピー・テーマカラー・連絡先 |
+| メニュー管理 | 追加/編集/削除・料金・時間・ドラッグ並び替え |
+| 営業時間 | 曜日ごとの営業時間・定休日・特別休業日 |
+| 予約ルール | 予約枠間隔・同時受付数・受付期間 |
+| Google連携 | Googleカレンダー接続設定 |
+
+## データベース
+
+SQLite ファイルは `data/headspa.db` に自動作成されます。
+初回起動時にテーブルと初期データが自動投入されます。
