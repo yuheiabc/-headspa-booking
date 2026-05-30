@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbAll, dbGet, dbRun, dbBatch } from '@/lib/db';
 import { addEventToCalendar } from '@/lib/google-calendar';
 import { sendBookingConfirmationEmail } from '@/lib/email';
+import { sendLineBookingNotification } from '@/lib/line-notify';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
@@ -170,6 +171,19 @@ export async function POST(request: NextRequest) {
         staffName: staffName || undefined,
       }).catch(() => { /* email is optional */ });
     }
+
+    // LINE通知送信（非同期・失敗してもエラーにしない）
+    sendLineBookingNotification({
+      customerName: result.data.name,
+      customerPhone: result.data.phone,
+      date: result.data.date,
+      time: result.data.time,
+      serviceName: service.name,
+      duration: service.duration,
+      price: service.price,
+      staffName: staffName || undefined,
+      notes: result.data.notes || undefined,
+    }).catch(() => { /* LINE notification is optional */ });
 
     return NextResponse.json(booking, { status: 201, headers: noCacheHeaders });
   } catch (err) {
