@@ -10,6 +10,9 @@ export interface Booking {
   duration: number;
   price: number;
   status: 'confirmed' | 'cancelled' | 'completed';
+  staff_id?: string;
+  staff_name?: string;
+  customer_id?: string;
   google_event_id?: string;
   notes?: string;
   created_at: string;
@@ -85,4 +88,82 @@ export interface AdminStats {
   monthRevenue: number;
   pendingBookings: number;
   recentBookings: Booking[];
+}
+
+// ---- Staff ----
+
+export interface Staff {
+  id: string;
+  name: string;
+  role: string;
+  color: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffShift {
+  id: number;
+  staff_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  is_off: boolean;
+  note: string;
+  created_at: string;
+}
+
+// ---- Customer (カルテ) ----
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  gender: string;
+  birthday: string;
+  memo: string;
+  visit_count: number;
+  last_visit: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerNote {
+  id: number;
+  customer_id: string;
+  booking_id: string;
+  staff_id: string;
+  staff_name: string;
+  date: string;
+  service_name: string;
+  content: string;
+  scalp_condition: string;
+  treatment_detail: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---- Sales Report ----
+
+export interface DailySales {
+  date: string;
+  booking_count: number;
+  revenue: number;
+  cancelled_count: number;
+}
+
+export interface MonthlySales {
+  month: string;
+  booking_count: number;
+  revenue: number;
+  cancelled_count: number;
+  avg_price: number;
+}
+
+export interface ServiceSales {
+  service_name: string;
+  booking_count: number;
+  revenue: number;
 }

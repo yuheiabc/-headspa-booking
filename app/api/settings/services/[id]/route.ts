@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbGet, dbRun } from '@/lib/db';
+import { dbGet, dbRun, dbBatch } from '@/lib/db';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -79,10 +79,13 @@ export async function PUT(
     const values: unknown[] = fields.map((f) => updates[f]);
     values.push(now, id);
 
-    await dbRun(`UPDATE services SET ${setClause}, updated_at = ? WHERE id = ?`, values);
+    const batchResults = await dbBatch([
+      { sql: `UPDATE services SET ${setClause}, updated_at = ? WHERE id = ?`, args: values },
+      { sql: 'SELECT * FROM services WHERE id = ?', args: [id] },
+    ]);
 
-    const updated = await dbGet<Record<string, unknown>>('SELECT * FROM services WHERE id = ?', [id]);
-    return NextResponse.json({ ...updated, is_active: Boolean(updated!.is_active) }, { headers: noCacheHeaders });
+    const updated = batchResults[1].rows[0] as Record<string, unknown>;
+    return NextResponse.json({ ...updated, is_active: Boolean(updated.is_active) }, { headers: noCacheHeaders });
   } catch (err) {
     console.error('PUT /api/settings/services/[id] error:', err);
     return NextResponse.json({ error: 'メニューの更新に失敗しました' }, { status: 500, headers: noCacheHeaders });

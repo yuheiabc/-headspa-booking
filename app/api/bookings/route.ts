@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbAll, dbGet, dbRun } from '@/lib/db';
+import { dbAll, dbGet, dbRun, dbBatch } from '@/lib/db';
 import { addEventToCalendar } from '@/lib/google-calendar';
+import { sendBookingConfirmationEmail } from '@/lib/email';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
@@ -18,6 +19,7 @@ const bookingSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日付の形式が正しくありません'),
   time: z.string().regex(/^\d{2}:\d{2}$/, '時間の形式が正しくありません'),
   service_id: z.string().min(1, 'メニューを選択してください'),
+  staff_id: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -95,6 +97,34 @@ export async function POST(request: NextRequest) {
     const id = uuidv4();
     const now = new Date().toISOString();
 
+    // スタッフ情報の取得
+    let staffName = '';
+    if (result.data.staff_id) {
+      const staff = await dbGet<{ name: string }>('SELECT name FROM staff WHERE id = ? AND is_active = 1', [result.data.staff_id]);
+      if (staff) staffName = staff.name;
+    }
+
+    // 顧客の自動マッチング（電話番号で検索、なければ作成）
+    let customerId = '';
+    const existingCustomer = await dbGet<{ id: string }>(
+      'SELECT id FROM customers WHERE phone = ?',
+      [result.data.phone]
+    );
+    if (existingCustomer) {
+      customerId = existingCustomer.id;
+      // 顧客情報を更新
+      await dbRun(
+        'UPDATE customers SET name = ?, email = CASE WHEN ? != \'\' THEN ? ELSE email END, visit_count = visit_count + 1, last_visit = ?, updated_at = ? WHERE id = ?',
+        [result.data.name, result.data.email || '', result.data.email || '', result.data.date, now, customerId]
+      );
+    } else {
+      customerId = uuidv4();
+      await dbRun(
+        'INSERT INTO customers (id, name, phone, email, visit_count, last_visit, created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?, ?)',
+        [customerId, result.data.name, result.data.phone, result.data.email || '', result.data.date, now, now]
+      );
+    }
+
     let googleEventId: string | null = null;
     try {
       googleEventId = await addEventToCalendar({
@@ -111,27 +141,36 @@ export async function POST(request: NextRequest) {
       // Google Calendar is optional
     }
 
-    await dbRun(`
-      INSERT INTO bookings (id, name, phone, email, date, time, service_id, service_name, duration, price, status, google_event_id, notes, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?)
-    `, [
-      id,
-      result.data.name,
-      result.data.phone,
-      result.data.email || null,
-      result.data.date,
-      result.data.time,
-      service.id,
-      service.name,
-      service.duration,
-      service.price,
-      googleEventId,
-      result.data.notes || null,
-      now,
-      now
+    const batchResults = await dbBatch([
+      {
+        sql: `INSERT INTO bookings (id, name, phone, email, date, time, service_id, service_name, duration, price, status, staff_id, staff_name, customer_id, google_event_id, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?)`,
+        args: [id, result.data.name, result.data.phone, result.data.email || null, result.data.date, result.data.time, service.id, service.name, service.duration, service.price, result.data.staff_id || '', staffName, customerId, googleEventId, result.data.notes || null, now, now],
+      },
+      { sql: 'SELECT * FROM bookings WHERE id = ?', args: [id] },
     ]);
 
-    const booking = await dbGet('SELECT * FROM bookings WHERE id = ?', [id]);
+    const booking = batchResults[1].rows[0];
+
+    // 予約確認メール送信（非同期・失敗してもエラーにしない）
+    if (result.data.email) {
+      const salon = await dbGet<{ salon_name: string; phone: string; address: string }>(
+        'SELECT salon_name, phone, address FROM salon_settings WHERE id = 1'
+      );
+      sendBookingConfirmationEmail({
+        customerName: result.data.name,
+        customerEmail: result.data.email,
+        date: result.data.date,
+        time: result.data.time,
+        serviceName: service.name,
+        duration: service.duration,
+        price: service.price,
+        salonName: salon?.salon_name || 'Head Spa',
+        salonPhone: salon?.phone || '',
+        salonAddress: salon?.address || '',
+        staffName: staffName || undefined,
+      }).catch(() => { /* email is optional */ });
+    }
+
     return NextResponse.json(booking, { status: 201, headers: noCacheHeaders });
   } catch (err) {
     console.error('POST /api/bookings error:', err);

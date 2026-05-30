@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbGet, dbRun } from '@/lib/db';
+import { dbGet, dbRun, dbBatch } from '@/lib/db';
 import { deleteEventFromCalendar } from '@/lib/google-calendar';
 
 export const dynamic = 'force-dynamic';
@@ -46,8 +46,10 @@ export async function PUT(
 
     const now = new Date().toISOString();
 
+    const updates: Array<{ sql: string; args: unknown[] }> = [];
+
     if (body.status) {
-      await dbRun('UPDATE bookings SET status = ?, updated_at = ? WHERE id = ?', [body.status, now, id]);
+      updates.push({ sql: 'UPDATE bookings SET status = ?, updated_at = ? WHERE id = ?', args: [body.status, now, id] });
 
       if (body.status === 'cancelled' && booking.google_event_id) {
         try {
@@ -59,10 +61,12 @@ export async function PUT(
     }
 
     if (body.notes !== undefined) {
-      await dbRun('UPDATE bookings SET notes = ?, updated_at = ? WHERE id = ?', [body.notes, now, id]);
+      updates.push({ sql: 'UPDATE bookings SET notes = ?, updated_at = ? WHERE id = ?', args: [body.notes, now, id] });
     }
 
-    const updated = await dbGet('SELECT * FROM bookings WHERE id = ?', [id]);
+    updates.push({ sql: 'SELECT * FROM bookings WHERE id = ?', args: [id] });
+    const batchResults = await dbBatch(updates);
+    const updated = batchResults[batchResults.length - 1].rows[0];
     return NextResponse.json(updated, { headers: noCacheHeaders });
   } catch (err) {
     console.error('PUT /api/bookings/[id] error:', err);
