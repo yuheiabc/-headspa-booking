@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 import type { Service } from '@/types';
 
 interface ServiceSelectorProps {
@@ -8,23 +10,26 @@ interface ServiceSelectorProps {
 }
 
 export default function ServiceSelector({ services, primaryColor }: ServiceSelectorProps) {
-  const handleSelect = (service: Service) => {
+  const router = useRouter();
+
+  const handleSelect = useCallback((service: Service) => {
     const params = new URLSearchParams({
       service_id: service.id,
       service_name: service.name,
       duration: String(service.duration),
       price: String(service.price),
     });
-    window.location.href = `/booking?${params.toString()}`;
-  };
+    router.push(`/booking?${params.toString()}`);
+  }, [router]);
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {services.map((service) => (
+      {services.map((service, i) => (
         <button
           key={service.id}
           onClick={() => handleSelect(service)}
-          className="text-left bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all hover:-translate-y-0.5 group"
+          className="text-left bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 group animate-fadeIn"
+          style={{ animationDelay: `${i * 80}ms` }}
         >
           {/* Image */}
           {service.image_url ? (
@@ -32,9 +37,9 @@ export default function ServiceSelector({ services, primaryColor }: ServiceSelec
               <img
                 src={service.image_url}
                 alt={service.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                loading="lazy"
               />
-              {/* Duration badge on image */}
               <span
                 className="absolute top-3 right-3 text-xs font-bold px-2.5 py-1 rounded-full text-white shadow-sm backdrop-blur-sm"
                 style={{ backgroundColor: `${primaryColor}dd` }}
@@ -61,7 +66,7 @@ export default function ServiceSelector({ services, primaryColor }: ServiceSelec
 
           {/* Content */}
           <div className="p-5">
-            <h3 className="text-lg font-semibold text-gray-900 group-hover:opacity-80 transition-colors mb-1">
+            <h3 className="text-lg font-semibold text-gray-900 group-hover:opacity-80 transition-colors duration-200 mb-1">
               {service.name}
             </h3>
 

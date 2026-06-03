@@ -88,7 +88,7 @@ function BookingPageInner() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-8">
-        <div className="mb-6 p-4 rounded-xl border border-gray-100 bg-white">
+        <div className="mb-6 p-4 rounded-xl border border-gray-100 bg-white animate-fadeIn">
           <div className="flex justify-between items-center">
             <div>
               <h3 className="font-semibold text-gray-900">{serviceName}</h3>
@@ -101,7 +101,7 @@ function BookingPageInner() {
         </div>
 
         {!selectedTime ? (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fadeIn">
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-3">日付を選択</h2>
               <DatePicker
@@ -115,7 +115,7 @@ function BookingPageInner() {
             </div>
 
             {selectedDate && (
-              <div>
+              <div className="animate-fadeInUp">
                 <h2 className="text-lg font-semibold text-gray-900 mb-3">
                   時間を選択
                   <span className="text-sm font-normal text-gray-500 ml-2">
@@ -133,7 +133,7 @@ function BookingPageInner() {
             )}
           </div>
         ) : (
-          <div>
+          <div className="animate-slideInRight">
             <button
               onClick={() => setSelectedTime(null)}
               className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4 transition-colors"

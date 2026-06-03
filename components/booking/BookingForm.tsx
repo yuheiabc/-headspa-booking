@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
 interface BookingFormProps {
@@ -26,6 +27,7 @@ export default function BookingForm({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'input' | 'confirm'>('input');
 
@@ -84,7 +86,7 @@ export default function BookingForm({
         date: booking.date,
         time: booking.time,
       });
-      window.location.href = `/booking/complete?${params.toString()}`;
+      router.push(`/booking/complete?${params.toString()}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '予約に失敗しました');
     } finally {

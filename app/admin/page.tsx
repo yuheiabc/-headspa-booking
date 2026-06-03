@@ -53,8 +53,25 @@ export default function AdminDashboard() {
 
   if (!stats) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-[#C9A96E] rounded-full" />
+      <div>
+        <div className="h-8 w-48 skeleton mb-6" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="rounded-xl p-5 bg-gray-50">
+              <div className="h-4 w-20 skeleton mb-2" />
+              <div className="h-8 w-16 skeleton" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-xl border p-6">
+          <div className="h-5 w-32 skeleton mb-4" />
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex justify-between py-3 border-b border-gray-50">
+              <div className="h-4 w-32 skeleton" />
+              <div className="h-4 w-24 skeleton" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
