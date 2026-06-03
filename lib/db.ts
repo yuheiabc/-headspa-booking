@@ -322,6 +322,11 @@ async function initDB(): Promise<void> {
       { sql: "ALTER TABLE bookings ADD COLUMN customer_id TEXT DEFAULT ''" },
     ]);
   } catch { /* column already exists */ }
+  try {
+    await tursoExecute([
+      { sql: "ALTER TABLE services ADD COLUMN image_url TEXT DEFAULT ''" },
+    ]);
+  } catch { /* column already exists */ }
 
   initialized = true;
 }

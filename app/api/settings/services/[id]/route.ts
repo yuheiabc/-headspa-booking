@@ -10,6 +10,7 @@ const updateServiceSchema = z.object({
   price: z.number().int().min(0).optional(),
   description: z.string().max(50).optional(),
   detail: z.string().optional(),
+  image_url: z.string().optional(),
   is_active: z.boolean().optional(),
   sort_order: z.number().int().optional(),
 });
@@ -66,6 +67,7 @@ export async function PUT(
     if (result.data.price !== undefined) updates.price = result.data.price;
     if (result.data.description !== undefined) updates.description = result.data.description;
     if (result.data.detail !== undefined) updates.detail = result.data.detail;
+    if (result.data.image_url !== undefined) updates.image_url = result.data.image_url;
     if (result.data.is_active !== undefined) updates.is_active = result.data.is_active ? 1 : 0;
     if (result.data.sort_order !== undefined) updates.sort_order = result.data.sort_order;
 

@@ -11,6 +11,7 @@ const serviceSchema = z.object({
   price: z.number().int().min(0, '料金は0以上を指定してください'),
   description: z.string().max(50, '説明は50文字以内で入力してください').optional().default(''),
   detail: z.string().optional().default(''),
+  image_url: z.string().optional().default(''),
   is_active: z.boolean().optional().default(true),
 });
 
@@ -56,8 +57,8 @@ export async function POST(request: NextRequest) {
 
     const batchResults = await dbBatch([
       {
-        sql: `INSERT INTO services (id, name, duration, price, description, detail, is_active, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [id, result.data.name, result.data.duration, result.data.price, result.data.description, result.data.detail, result.data.is_active ? 1 : 0, sortOrder, now, now],
+        sql: `INSERT INTO services (id, name, duration, price, description, detail, image_url, is_active, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [id, result.data.name, result.data.duration, result.data.price, result.data.description, result.data.detail, result.data.image_url, result.data.is_active ? 1 : 0, sortOrder, now, now],
       },
       { sql: 'SELECT * FROM services WHERE id = ?', args: [id] },
     ]);
