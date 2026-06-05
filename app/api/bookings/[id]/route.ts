@@ -48,6 +48,7 @@ export async function PUT(
 
     const updates: Array<{ sql: string; args: unknown[] }> = [];
 
+    // ステータス変更
     if (body.status) {
       updates.push({ sql: 'UPDATE bookings SET status = ?, updated_at = ? WHERE id = ?', args: [body.status, now, id] });
 
@@ -60,6 +61,30 @@ export async function PUT(
       }
     }
 
+    // 各フィールドの更新
+    if (body.name !== undefined) {
+      updates.push({ sql: 'UPDATE bookings SET name = ?, updated_at = ? WHERE id = ?', args: [body.name, now, id] });
+    }
+    if (body.phone !== undefined) {
+      updates.push({ sql: 'UPDATE bookings SET phone = ?, updated_at = ? WHERE id = ?', args: [body.phone, now, id] });
+    }
+    if (body.email !== undefined) {
+      updates.push({ sql: 'UPDATE bookings SET email = ?, updated_at = ? WHERE id = ?', args: [body.email, now, id] });
+    }
+    if (body.date !== undefined) {
+      updates.push({ sql: 'UPDATE bookings SET date = ?, updated_at = ? WHERE id = ?', args: [body.date, now, id] });
+    }
+    if (body.time !== undefined) {
+      updates.push({ sql: 'UPDATE bookings SET time = ?, updated_at = ? WHERE id = ?', args: [body.time, now, id] });
+    }
+    if (body.service_id !== undefined && body.service_name !== undefined) {
+      updates.push({ sql: 'UPDATE bookings SET service_id = ?, service_name = ?, duration = ?, price = ?, updated_at = ? WHERE id = ?',
+        args: [body.service_id, body.service_name, body.duration || booking.duration, body.price || booking.price, now, id] });
+    }
+    if (body.staff_id !== undefined) {
+      updates.push({ sql: 'UPDATE bookings SET staff_id = ?, staff_name = ?, updated_at = ? WHERE id = ?',
+        args: [body.staff_id, body.staff_name || '', now, id] });
+    }
     if (body.notes !== undefined) {
       updates.push({ sql: 'UPDATE bookings SET notes = ?, updated_at = ? WHERE id = ?', args: [body.notes, now, id] });
     }

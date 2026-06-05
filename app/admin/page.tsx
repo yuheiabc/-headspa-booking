@@ -97,21 +97,28 @@ export default function AdminDashboard() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">直近の予約</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-gray-900">直近の予約</h2>
+          <a href="/admin/bookings" className="text-sm text-[#C9A96E] hover:underline">すべて見る →</a>
+        </div>
         {stats.recentBookings.length === 0 ? (
           <p className="text-gray-500 text-sm">予約がありません</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {stats.recentBookings.map((b) => (
-              <div key={b.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div>
-                  <span className="font-medium text-gray-900">{b.name}</span>
-                  <span className="text-sm text-gray-500 ml-3">{b.service_name}</span>
+              <a key={b.id} href="/admin/bookings"
+                className="flex items-center justify-between py-3 px-3 -mx-3 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[#C9A96E]/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-[#A07840]">{b.time}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-900">{b.name}</span>
+                    <span className="text-sm text-gray-500 ml-2">{b.service_name}</span>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-500">
-                  {b.date} {b.time}
-                </div>
-              </div>
+                <div className="text-sm text-gray-400">{b.date}</div>
+              </a>
             ))}
           </div>
         )}
