@@ -327,6 +327,16 @@ async function initDB(): Promise<void> {
       { sql: "ALTER TABLE services ADD COLUMN image_url TEXT DEFAULT ''" },
     ]);
   } catch { /* column already exists */ }
+  try {
+    await tursoExecute([
+      { sql: "ALTER TABLE customers ADD COLUMN referral_source TEXT DEFAULT ''" },
+    ]);
+  } catch { /* column already exists */ }
+  try {
+    await tursoExecute([
+      { sql: "ALTER TABLE bookings ADD COLUMN referral_source TEXT DEFAULT ''" },
+    ]);
+  } catch { /* column already exists */ }
 
   // 回数券テーブル
   await tursoExecute([

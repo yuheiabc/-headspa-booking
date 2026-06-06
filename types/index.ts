@@ -13,6 +13,7 @@ export interface Booking {
   staff_id?: string;
   staff_name?: string;
   customer_id?: string;
+  referral_source?: string;
   google_event_id?: string;
   notes?: string;
   created_at: string;
@@ -125,6 +126,7 @@ export interface Customer {
   gender: string;
   birthday: string;
   memo: string;
+  referral_source: string;
   visit_count: number;
   last_visit: string;
   created_at: string;

@@ -27,6 +27,7 @@ export default function BookingForm({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [referralSource, setReferralSource] = useState('');
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'input' | 'confirm'>('input');
@@ -66,6 +67,7 @@ export default function BookingForm({
           time,
           service_id: serviceId,
           notes: notes.trim() || undefined,
+          referral_source: referralSource || undefined,
         }),
       });
 
@@ -128,6 +130,12 @@ export default function BookingForm({
             <div className="flex justify-between">
               <span className="text-gray-500">メール</span>
               <span className="font-medium text-gray-900">{email}</span>
+            </div>
+          )}
+          {referralSource && (
+            <div className="flex justify-between">
+              <span className="text-gray-500">ご来店のきっかけ</span>
+              <span className="font-medium text-gray-900">{referralSource}</span>
             </div>
           )}
           {notes && (
@@ -198,6 +206,25 @@ export default function BookingForm({
           placeholder="example@email.com"
           className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent outline-none transition-all"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">ご来店のきっかけ</label>
+        <select
+          value={referralSource}
+          onChange={(e) => setReferralSource(e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent outline-none transition-all"
+        >
+          <option value="">選択してください</option>
+          <option value="Instagram">Instagram</option>
+          <option value="LINE">LINE</option>
+          <option value="ホットペッパー">ホットペッパー</option>
+          <option value="Google検索">Google検索</option>
+          <option value="紹介">ご紹介</option>
+          <option value="チラシ・広告">チラシ・広告</option>
+          <option value="ウェブサイト">ウェブサイト</option>
+          <option value="その他">その他</option>
+        </select>
       </div>
 
       <div>

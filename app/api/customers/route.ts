@@ -17,6 +17,7 @@ const customerSchema = z.object({
   gender: z.string().optional(),
   birthday: z.string().optional(),
   memo: z.string().optional(),
+  referral_source: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -78,9 +79,9 @@ export async function POST(request: NextRequest) {
 
     const batchResults = await dbBatch([
       {
-        sql: `INSERT INTO customers (id, name, phone, email, gender, birthday, memo, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [id, result.data.name, result.data.phone, result.data.email || '', result.data.gender || '', result.data.birthday || '', result.data.memo || '', now, now],
+        sql: `INSERT INTO customers (id, name, phone, email, gender, birthday, memo, referral_source, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [id, result.data.name, result.data.phone, result.data.email || '', result.data.gender || '', result.data.birthday || '', result.data.memo || '', result.data.referral_source || '', now, now],
       },
       { sql: 'SELECT * FROM customers WHERE id = ?', args: [id] },
     ]);

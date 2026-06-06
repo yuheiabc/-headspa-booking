@@ -16,6 +16,7 @@ const updateCustomerSchema = z.object({
   gender: z.string().optional(),
   birthday: z.string().optional(),
   memo: z.string().optional(),
+  referral_source: z.string().optional(),
 });
 
 export async function GET(

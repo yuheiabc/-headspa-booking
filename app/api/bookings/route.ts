@@ -22,6 +22,7 @@ const bookingSchema = z.object({
   service_id: z.string().min(1, 'メニューを選択してください'),
   staff_id: z.string().optional(),
   notes: z.string().optional(),
+  referral_source: z.string().optional(),
   admin_mode: z.boolean().optional(),
 });
 
@@ -35,6 +36,7 @@ const adminBookingSchema = z.object({
   service_id: z.string().optional().default(''),
   staff_id: z.string().optional(),
   notes: z.string().optional(),
+  referral_source: z.string().optional(),
   admin_mode: z.literal(true),
 });
 
@@ -138,14 +140,14 @@ export async function POST(request: NextRequest) {
       if (existingCustomer) {
         customerId = existingCustomer.id;
         await dbRun(
-          'UPDATE customers SET name = ?, email = CASE WHEN ? != \'\' THEN ? ELSE email END, visit_count = visit_count + 1, last_visit = ?, updated_at = ? WHERE id = ?',
-          [result.data.name, result.data.email || '', result.data.email || '', result.data.date || '', now, customerId]
+          'UPDATE customers SET name = ?, email = CASE WHEN ? != \'\' THEN ? ELSE email END, referral_source = CASE WHEN referral_source = \'\' AND ? != \'\' THEN ? ELSE referral_source END, visit_count = visit_count + 1, last_visit = ?, updated_at = ? WHERE id = ?',
+          [result.data.name, result.data.email || '', result.data.email || '', result.data.referral_source || '', result.data.referral_source || '', result.data.date || '', now, customerId]
         );
       } else {
         customerId = uuidv4();
         await dbRun(
-          'INSERT INTO customers (id, name, phone, email, visit_count, last_visit, created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?, ?)',
-          [customerId, result.data.name, result.data.phone, result.data.email || '', result.data.date || '', now, now]
+          'INSERT INTO customers (id, name, phone, email, referral_source, visit_count, last_visit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)',
+          [customerId, result.data.name, result.data.phone, result.data.email || '', result.data.referral_source || '', result.data.date || '', now, now]
         );
       }
     }
@@ -170,8 +172,8 @@ export async function POST(request: NextRequest) {
 
     const batchResults = await dbBatch([
       {
-        sql: `INSERT INTO bookings (id, name, phone, email, date, time, service_id, service_name, duration, price, status, staff_id, staff_name, customer_id, google_event_id, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?)`,
-        args: [id, result.data.name, result.data.phone || '', result.data.email || null, result.data.date || '', result.data.time || '', service?.id || '', service?.name || '', service?.duration || 0, service?.price || 0, result.data.staff_id || '', staffName, customerId, googleEventId, result.data.notes || null, now, now],
+        sql: `INSERT INTO bookings (id, name, phone, email, date, time, service_id, service_name, duration, price, status, staff_id, staff_name, customer_id, referral_source, google_event_id, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [id, result.data.name, result.data.phone || '', result.data.email || null, result.data.date || '', result.data.time || '', service?.id || '', service?.name || '', service?.duration || 0, service?.price || 0, result.data.staff_id || '', staffName, customerId, result.data.referral_source || '', googleEventId, result.data.notes || null, now, now],
       },
       { sql: 'SELECT * FROM bookings WHERE id = ?', args: [id] },
     ]);

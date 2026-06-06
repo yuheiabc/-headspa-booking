@@ -19,11 +19,12 @@ interface BookingFormData {
   service_id: string;
   staff_id: string;
   notes: string;
+  referral_source: string;
 }
 
 const emptyForm: BookingFormData = {
   name: '', phone: '', email: '', date: '', time: '',
-  service_id: '', staff_id: '', notes: '',
+  service_id: '', staff_id: '', notes: '', referral_source: '',
 };
 
 export default function BookingTable({ bookings, onUpdate }: BookingTableProps) {
@@ -91,6 +92,7 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
           service_id: form.service_id || undefined,
           staff_id: form.staff_id || undefined,
           notes: form.notes || undefined,
+          referral_source: form.referral_source || undefined,
         }),
       });
       if (!res.ok) {
@@ -170,6 +172,7 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
       service_id: b.service_id,
       staff_id: b.staff_id || '',
       notes: b.notes || '',
+      referral_source: b.referral_source || '',
     });
     setEditBooking(b);
     setDetailBooking(null);
@@ -233,6 +236,21 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
               {staffList.map(s => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">流入経路</label>
+            <select value={form.referral_source} onChange={e => setForm({...form, referral_source: e.target.value})}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              <option value="">選択してください</option>
+              <option value="Instagram">Instagram</option>
+              <option value="LINE">LINE</option>
+              <option value="ホットペッパー">ホットペッパー</option>
+              <option value="Google検索">Google検索</option>
+              <option value="紹介">紹介</option>
+              <option value="チラシ・広告">チラシ・広告</option>
+              <option value="ウェブサイト">ウェブサイト</option>
+              <option value="その他">その他</option>
             </select>
           </div>
           <div>

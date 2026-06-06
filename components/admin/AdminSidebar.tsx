@@ -7,7 +7,6 @@ import { usePathname, useRouter } from 'next/navigation';
 const menuItems = [
   { href: '/admin', label: 'ダッシュボード', icon: '📊' },
   { href: '/admin/bookings', label: '予約管理', icon: '📋' },
-  { href: '/admin/calendar', label: 'カレンダー', icon: '📅' },
   { href: '/admin/customers', label: '顧客管理', icon: '👤' },
   { href: '/admin/staff', label: 'スタッフ・シフト', icon: '👥' },
   { href: '/admin/tickets', label: '回数券', icon: '🎫' },

@@ -11,7 +11,7 @@ export default function CustomersPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', phone: '', email: '', gender: '', birthday: '', memo: '' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', gender: '', birthday: '', memo: '', referral_source: '' });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const limit = 20;
@@ -53,7 +53,7 @@ export default function CustomersPage() {
         throw new Error(err.error);
       }
       setShowForm(false);
-      setForm({ name: '', phone: '', email: '', gender: '', birthday: '', memo: '' });
+      setForm({ name: '', phone: '', email: '', gender: '', birthday: '', memo: '', referral_source: '' });
       setMessage('顧客を登録しました');
       setTimeout(() => setMessage(''), 3000);
       await fetchCustomers();
@@ -124,6 +124,7 @@ export default function CustomersPage() {
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">名前</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">電話番号</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">メール</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">流入経路</th>
                     <th className="text-center px-4 py-3 text-xs font-medium text-gray-500">来店回数</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">最終来店</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-gray-500">操作</th>
@@ -135,6 +136,13 @@ export default function CustomersPage() {
                       <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{c.phone}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{c.email || '-'}</td>
+                      <td className="px-4 py-3">
+                        {c.referral_source ? (
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{c.referral_source}</span>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-center">
                         <span className="inline-flex items-center justify-center w-8 h-8 bg-[#C9A96E]/10 text-[#A07840] rounded-full text-sm font-medium">
                           {c.visit_count}
@@ -259,6 +267,24 @@ export default function CustomersPage() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">流入経路</label>
+                <select
+                  value={form.referral_source}
+                  onChange={(e) => setForm({ ...form, referral_source: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="">選択してください</option>
+                  <option value="Instagram">Instagram</option>
+                  <option value="LINE">LINE</option>
+                  <option value="ホットペッパー">ホットペッパー</option>
+                  <option value="Google検索">Google検索</option>
+                  <option value="紹介">紹介</option>
+                  <option value="チラシ・広告">チラシ・広告</option>
+                  <option value="ウェブサイト">ウェブサイト</option>
+                  <option value="その他">その他</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">メモ</label>

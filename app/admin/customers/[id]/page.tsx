@@ -213,6 +213,24 @@ export default function CustomerDetailPage() {
                 </select>
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">流入経路</label>
+                <select
+                  value={editForm.referral_source || ''}
+                  onChange={(e) => setEditForm({ ...editForm, referral_source: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="">未選択</option>
+                  <option value="Instagram">Instagram</option>
+                  <option value="LINE">LINE</option>
+                  <option value="ホットペッパー">ホットペッパー</option>
+                  <option value="Google検索">Google検索</option>
+                  <option value="紹介">紹介</option>
+                  <option value="チラシ・広告">チラシ・広告</option>
+                  <option value="ウェブサイト">ウェブサイト</option>
+                  <option value="その他">その他</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">メモ</label>
                 <textarea
                   value={editForm.memo || ''}
@@ -241,6 +259,7 @@ export default function CustomerDetailPage() {
                       gender: customer.gender,
                       birthday: customer.birthday,
                       memo: customer.memo,
+                      referral_source: customer.referral_source,
                     });
                     setEditing(true);
                   }}
@@ -255,6 +274,7 @@ export default function CustomerDetailPage() {
                   { label: 'メール', value: customer.email || '-' },
                   { label: '性別', value: genderLabel || '-' },
                   { label: '誕生日', value: customer.birthday || '-' },
+                  { label: '流入経路', value: customer.referral_source || '-' },
                   { label: '登録日', value: customer.created_at?.split('T')[0] || '-' },
                 ].map((item) => (
                   <div key={item.label}>
