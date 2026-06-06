@@ -72,8 +72,8 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
   };
 
   const handleCreate = async () => {
-    if (!form.name || !form.phone || !form.date || !form.time || !form.service_id) {
-      toast.error('名前・電話番号・日付・時間・メニューは必須です');
+    if (!form.name) {
+      toast.error('名前は必須です');
       return;
     }
     setSaving(true);
@@ -82,12 +82,13 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          admin_mode: true,
           name: form.name,
-          phone: form.phone,
+          phone: form.phone || undefined,
           email: form.email || undefined,
-          date: form.date,
-          time: form.time,
-          service_id: form.service_id,
+          date: form.date || undefined,
+          time: form.time || undefined,
+          service_id: form.service_id || undefined,
           staff_id: form.staff_id || undefined,
           notes: form.notes || undefined,
         }),
@@ -192,7 +193,7 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="山田 太郎" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">電話番号 *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">電話番号</label>
               <input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="090-1234-5678" />
             </div>
@@ -204,18 +205,18 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">日付 *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">日付</label>
               <input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">時間 *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">時間</label>
               <input type="time" value={form.time} onChange={e => setForm({...form, time: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">メニュー *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">メニュー</label>
             <select value={form.service_id} onChange={e => setForm({...form, service_id: e.target.value})}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
               <option value="">選択してください</option>

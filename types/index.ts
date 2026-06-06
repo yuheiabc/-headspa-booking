@@ -168,3 +168,33 @@ export interface ServiceSales {
   booking_count: number;
   revenue: number;
 }
+
+// ---- 回数券 ----
+
+export interface TicketPlan {
+  id: string;
+  name: string;
+  service_id: string;
+  service_name: string;
+  total_count: number;
+  price: number;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerTicket {
+  id: number;
+  customer_id: string;
+  customer_name: string;
+  ticket_plan_id: string;
+  plan_name: string;
+  service_name: string;
+  total_count: number;
+  used_count: number;
+  remaining_count: number;
+  purchased_at: string;
+  expires_at: string;
+  memo: string;
+}

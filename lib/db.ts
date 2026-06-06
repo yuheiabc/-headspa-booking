@@ -328,6 +328,40 @@ async function initDB(): Promise<void> {
     ]);
   } catch { /* column already exists */ }
 
+  // 回数券テーブル
+  await tursoExecute([
+    {
+      sql: `CREATE TABLE IF NOT EXISTS ticket_plans (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      service_id TEXT DEFAULT '',
+      service_name TEXT DEFAULT '',
+      total_count INTEGER NOT NULL DEFAULT 5,
+      price INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`,
+    },
+    {
+      sql: `CREATE TABLE IF NOT EXISTS customer_tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id TEXT NOT NULL,
+      customer_name TEXT DEFAULT '',
+      ticket_plan_id TEXT DEFAULT '',
+      plan_name TEXT DEFAULT '',
+      service_name TEXT DEFAULT '',
+      total_count INTEGER NOT NULL DEFAULT 5,
+      used_count INTEGER DEFAULT 0,
+      remaining_count INTEGER NOT NULL DEFAULT 5,
+      purchased_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      expires_at TEXT DEFAULT '',
+      memo TEXT DEFAULT ''
+    )`,
+    },
+  ]);
+
   initialized = true;
 }
 
