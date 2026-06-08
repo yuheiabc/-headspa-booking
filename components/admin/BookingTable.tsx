@@ -17,6 +17,9 @@ interface BookingFormData {
   date: string;
   time: string;
   service_id: string;
+  service_name_custom: string;
+  custom_price: string;
+  custom_duration: string;
   staff_id: string;
   notes: string;
   referral_source: string;
@@ -24,7 +27,8 @@ interface BookingFormData {
 
 const emptyForm: BookingFormData = {
   name: '', phone: '', email: '', date: '', time: '',
-  service_id: '', staff_id: '', notes: '', referral_source: '',
+  service_id: '', service_name_custom: '', custom_price: '', custom_duration: '',
+  staff_id: '', notes: '', referral_source: '',
 };
 
 export default function BookingTable({ bookings, onUpdate }: BookingTableProps) {
@@ -137,6 +141,9 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
           date: form.date || undefined,
           time: form.time || undefined,
           service_id: form.service_id || undefined,
+          service_name_custom: form.service_name_custom || undefined,
+          custom_price: form.custom_price ? Number(form.custom_price) : undefined,
+          custom_duration: form.custom_duration ? Number(form.custom_duration) : undefined,
           staff_id: form.staff_id || undefined,
           notes: form.notes || undefined,
           referral_source: form.referral_source || undefined,
@@ -173,9 +180,9 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
           date: form.date,
           time: form.time,
           service_id: form.service_id,
-          service_name: selectedService?.name || editBooking.service_name,
-          duration: selectedService?.duration || editBooking.duration,
-          price: selectedService?.price || editBooking.price,
+          service_name: form.service_name_custom || selectedService?.name || editBooking.service_name,
+          duration: form.custom_duration ? Number(form.custom_duration) : (selectedService?.duration || editBooking.duration),
+          price: form.custom_price ? Number(form.custom_price) : (selectedService?.price || editBooking.price),
           staff_id: form.staff_id,
           staff_name: selectedStaff?.name || '',
           notes: form.notes,
@@ -217,6 +224,9 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
       date: b.date,
       time: b.time,
       service_id: b.service_id,
+      service_name_custom: '',
+      custom_price: String(b.price || ''),
+      custom_duration: String(b.duration || ''),
       staff_id: b.staff_id || '',
       notes: b.notes || '',
       referral_source: b.referral_source || '',
@@ -269,13 +279,45 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">メニュー</label>
-            <select value={form.service_id} onChange={e => setForm({...form, service_id: e.target.value})}
+            <select value={form.service_id} onChange={e => {
+              const svc = services.find(s => s.id === e.target.value);
+              setForm({
+                ...form,
+                service_id: e.target.value,
+                service_name_custom: '',
+                custom_price: svc ? String(svc.price) : form.custom_price,
+                custom_duration: svc ? String(svc.duration) : form.custom_duration,
+              });
+            }}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
               <option value="">選択してください</option>
               {services.map(s => (
                 <option key={s.id} value={s.id}>{s.name}（{s.duration}分 / ¥{s.price.toLocaleString()}）</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              メニュー名（カスタム）
+              <span className="text-xs text-gray-400 ml-1">※上のメニューと別名にしたい場合</span>
+            </label>
+            <input type="text" value={form.service_name_custom} onChange={e => setForm({...form, service_name_custom: e.target.value})}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              placeholder="例: 初回限定ヘッドスパ" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">金額（円）</label>
+              <input type="number" value={form.custom_price} onChange={e => setForm({...form, custom_price: e.target.value})}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                placeholder="8000" min="0" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">所要時間（分）</label>
+              <input type="number" value={form.custom_duration} onChange={e => setForm({...form, custom_duration: e.target.value})}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                placeholder="60" min="0" />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">担当スタッフ</label>

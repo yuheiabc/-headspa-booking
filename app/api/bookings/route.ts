@@ -34,6 +34,9 @@ const adminBookingSchema = z.object({
   date: z.string().optional().default(''),
   time: z.string().optional().default(''),
   service_id: z.string().optional().default(''),
+  service_name_custom: z.string().optional(),
+  custom_price: z.number().optional(),
+  custom_duration: z.number().optional(),
   staff_id: z.string().optional(),
   notes: z.string().optional(),
   referral_source: z.string().optional(),
@@ -152,17 +155,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 管理画面からのカスタム値（金額・所要時間・メニュー名の上書き）
+    const adminData = isAdmin ? (result.data as z.infer<typeof adminBookingSchema>) : null;
+
     let googleEventId: string | null = null;
-    if (service && result.data.date && result.data.time) {
+    if ((service || (isAdmin && adminData?.service_name_custom)) && result.data.date && result.data.time) {
+      const calServiceName = adminData?.service_name_custom || service?.name || '';
+      const calPrice = adminData?.custom_price ?? service?.price ?? 0;
+      const calDuration = adminData?.custom_duration ?? service?.duration ?? 60;
       try {
         googleEventId = await addEventToCalendar({
           name: result.data.name,
           phone: result.data.phone || '',
-          serviceName: service.name,
-          price: service.price,
+          serviceName: calServiceName,
+          price: calPrice,
           date: result.data.date,
           time: result.data.time,
-          duration: service.duration,
+          duration: calDuration,
           notes: result.data.notes,
         });
       } catch {
@@ -170,10 +179,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const finalServiceName = adminData?.service_name_custom || service?.name || '';
+    const finalPrice = adminData?.custom_price ?? service?.price ?? 0;
+    const finalDuration = adminData?.custom_duration ?? service?.duration ?? 0;
+
     const batchResults = await dbBatch([
       {
         sql: `INSERT INTO bookings (id, name, phone, email, date, time, service_id, service_name, duration, price, status, staff_id, staff_name, customer_id, referral_source, google_event_id, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [id, result.data.name, result.data.phone || '', result.data.email || null, result.data.date || '', result.data.time || '', service?.id || '', service?.name || '', service?.duration || 0, service?.price || 0, result.data.staff_id || '', staffName, customerId, result.data.referral_source || '', googleEventId, result.data.notes || null, now, now],
+        args: [id, result.data.name, result.data.phone || '', result.data.email || null, result.data.date || '', result.data.time || '', service?.id || '', finalServiceName, finalDuration, finalPrice, result.data.staff_id || '', staffName, customerId, result.data.referral_source || '', googleEventId, result.data.notes || null, now, now],
       },
       { sql: 'SELECT * FROM bookings WHERE id = ?', args: [id] },
     ]);
