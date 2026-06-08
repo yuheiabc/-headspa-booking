@@ -171,6 +171,23 @@ export interface ServiceSales {
   revenue: number;
 }
 
+// ---- その他収入 ----
+
+export interface OtherIncome {
+  id: number;
+  date: string;
+  category: string;
+  description: string;
+  amount: number;
+  staff_id: string;
+  staff_name: string;
+  customer_id: string;
+  customer_name: string;
+  memo: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ---- 回数券 ----
 
 export interface TicketPlan {

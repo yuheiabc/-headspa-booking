@@ -338,6 +338,26 @@ async function initDB(): Promise<void> {
     ]);
   } catch { /* column already exists */ }
 
+  // その他収入テーブル
+  await tursoExecute([
+    {
+      sql: `CREATE TABLE IF NOT EXISTS other_income (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT '',
+      description TEXT DEFAULT '',
+      amount INTEGER NOT NULL DEFAULT 0,
+      staff_id TEXT DEFAULT '',
+      staff_name TEXT DEFAULT '',
+      customer_id TEXT DEFAULT '',
+      customer_name TEXT DEFAULT '',
+      memo TEXT DEFAULT '',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`,
+    },
+  ]);
+
   // 回数券テーブル
   await tursoExecute([
     {

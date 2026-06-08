@@ -10,6 +10,7 @@ const menuItems = [
   { href: '/admin/customers', label: '顧客管理', icon: '👤' },
   { href: '/admin/staff', label: 'スタッフ・シフト', icon: '👥' },
   { href: '/admin/tickets', label: '回数券', icon: '🎫' },
+  { href: '/admin/other-income', label: 'その他収入', icon: '💰' },
   { href: '/admin/reports', label: '売上レポート', icon: '📈' },
 ];
 

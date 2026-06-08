@@ -13,7 +13,7 @@ export default function ReportsPage() {
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [data, setData] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState({ totalRevenue: 0, totalBookings: 0, avgPrice: 0 });
+  const [summary, setSummary] = useState({ totalRevenue: 0, totalBookings: 0, avgPrice: 0, otherIncome: 0 });
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -23,16 +23,19 @@ export default function ReportsPage() {
         { cache: 'no-store' }
       );
       const result = await res.json();
-      setData(Array.isArray(result) ? result : []);
+      const rows = result.data || (Array.isArray(result) ? result : []);
+      const otherIncomeTotal = result.other_income_total || 0;
+      setData(rows);
 
       // Calculate summary
-      if (Array.isArray(result)) {
-        const totalRevenue = result.reduce((sum: number, r: Record<string, unknown>) => sum + (Number(r.revenue) || 0), 0);
-        const totalBookings = result.reduce((sum: number, r: Record<string, unknown>) => sum + (Number(r.booking_count) || 0), 0);
+      if (Array.isArray(rows)) {
+        const totalRevenue = rows.reduce((sum: number, r: Record<string, unknown>) => sum + (Number(r.revenue) || 0), 0);
+        const totalBookings = rows.reduce((sum: number, r: Record<string, unknown>) => sum + (Number(r.booking_count) || 0), 0);
         setSummary({
           totalRevenue,
           totalBookings,
           avgPrice: totalBookings > 0 ? Math.round(totalRevenue / totalBookings) : 0,
+          otherIncome: otherIncomeTotal,
         });
       }
     } catch { /* ignore */ } finally {
@@ -71,18 +74,22 @@ export default function ReportsPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">売上レポート</h1>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-[#C9A96E]/10 rounded-xl p-5">
-          <p className="text-sm text-[#8B6914]">売上合計</p>
+          <p className="text-sm text-[#8B6914]">施術売上</p>
           <p className="text-2xl font-bold text-[#A07840] mt-1">¥{summary.totalRevenue.toLocaleString()}</p>
         </div>
-        <div className="bg-blue-50 rounded-xl p-5">
-          <p className="text-sm text-blue-600">予約件数</p>
-          <p className="text-2xl font-bold text-blue-700 mt-1">{summary.totalBookings}件</p>
+        <div className="bg-purple-50 rounded-xl p-5">
+          <p className="text-sm text-purple-600">その他収入</p>
+          <p className="text-2xl font-bold text-purple-700 mt-1">¥{summary.otherIncome.toLocaleString()}</p>
         </div>
         <div className="bg-green-50 rounded-xl p-5">
-          <p className="text-sm text-green-600">平均単価</p>
-          <p className="text-2xl font-bold text-green-700 mt-1">¥{summary.avgPrice.toLocaleString()}</p>
+          <p className="text-sm text-green-600">総売上</p>
+          <p className="text-2xl font-bold text-green-700 mt-1">¥{(summary.totalRevenue + summary.otherIncome).toLocaleString()}</p>
+        </div>
+        <div className="bg-blue-50 rounded-xl p-5">
+          <p className="text-sm text-blue-600">予約{summary.totalBookings}件</p>
+          <p className="text-2xl font-bold text-blue-700 mt-1">平均 ¥{summary.avgPrice.toLocaleString()}</p>
         </div>
       </div>
 
@@ -238,9 +245,12 @@ export default function ReportsPage() {
                      reportType === 'service' ? 'メニュー' : 'スタッフ'}
                   </th>
                   <th className="text-right px-4 py-3 text-xs font-medium text-gray-500">予約件数</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500">売上</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500">施術売上</th>
                   {(reportType === 'daily' || reportType === 'monthly') && (
-                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500">キャンセル</th>
+                    <>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-gray-500">その他</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-gray-500">キャンセル</th>
+                    </>
                   )}
                 </tr>
               </thead>
@@ -259,7 +269,12 @@ export default function ReportsPage() {
                       <td className="px-4 py-3 text-sm text-right text-gray-600">{String(d.booking_count)}件</td>
                       <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">¥{Number(d.revenue).toLocaleString()}</td>
                       {(reportType === 'daily' || reportType === 'monthly') && (
-                        <td className="px-4 py-3 text-sm text-right text-red-500">{String(d.cancelled_count)}件</td>
+                        <>
+                          <td className="px-4 py-3 text-sm text-right text-purple-600">
+                            {Number(d.other_income) > 0 ? `¥${Number(d.other_income).toLocaleString()}` : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-red-500">{String(d.cancelled_count)}件</td>
+                        </>
                       )}
                     </tr>
                   );
@@ -271,9 +286,14 @@ export default function ReportsPage() {
                   <td className="px-4 py-3 text-sm text-right font-bold text-gray-900">{summary.totalBookings}件</td>
                   <td className="px-4 py-3 text-sm text-right font-bold text-[#A07840]">¥{summary.totalRevenue.toLocaleString()}</td>
                   {(reportType === 'daily' || reportType === 'monthly') && (
-                    <td className="px-4 py-3 text-sm text-right text-red-500">
-                      {data.reduce((sum, d) => sum + (Number(d.cancelled_count) || 0), 0)}件
-                    </td>
+                    <>
+                      <td className="px-4 py-3 text-sm text-right font-bold text-purple-600">
+                        ¥{summary.otherIncome.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-red-500">
+                        {data.reduce((sum, d) => sum + (Number(d.cancelled_count) || 0), 0)}件
+                      </td>
+                    </>
                   )}
                 </tr>
               </tfoot>
