@@ -36,6 +36,8 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
   const [services, setServices] = useState<Service[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [saving, setSaving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
   // メニュー・スタッフ一覧を取得
   useEffect(() => {
@@ -47,6 +49,51 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
       setStaffList(Array.isArray(staff) ? staff.filter((s: Staff) => s.is_active) : []);
     }).catch(() => {});
   }, []);
+
+  // bookings が変わったら選択をリセット
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [bookings]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === bookings.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(bookings.map(b => b.id)));
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`${selectedIds.size}件の予約を削除しますか？\nこの操作は取り消せません。`)) return;
+    setBatchDeleting(true);
+    try {
+      const res = await fetch('/api/bookings/batch-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || '削除に失敗しました');
+      }
+      toast.success(`${selectedIds.size}件の予約を削除しました`);
+      setSelectedIds(new Set());
+      onUpdate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '削除に失敗しました');
+    } finally {
+      setBatchDeleting(false);
+    }
+  };
 
   const handleStatusChange = async (id: string, status: string) => {
     if (status === 'cancelled' && !confirm('この予約をキャンセルしますか？')) return;
@@ -182,6 +229,8 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
     setForm(emptyForm);
     setShowCreateForm(true);
   };
+
+  const isAllSelected = bookings.length > 0 && selectedIds.size === bookings.length;
 
   // フォームモーダル（新規・編集共用）
   const renderFormModal = (isEdit: boolean) => (
@@ -336,12 +385,28 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
   return (
     <>
       {/* 新規予約ボタン */}
-      <div className="mb-4">
+      <div className="flex items-center justify-between mb-4">
         <button onClick={openCreate}
           className="px-4 py-2 bg-[#C9A96E] text-white rounded-lg text-sm font-medium hover:bg-[#B89555] transition-colors">
           + 新規予約を作成
         </button>
       </div>
+
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between animate-fadeIn">
+          <span className="text-sm text-red-700 font-medium">
+            {selectedIds.size}件選択中
+          </span>
+          <button
+            onClick={handleBatchDelete}
+            disabled={batchDeleting}
+            className="px-4 py-1.5 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50 transition-colors"
+          >
+            {batchDeleting ? '削除中...' : `${selectedIds.size}件を削除`}
+          </button>
+        </div>
+      )}
 
       {bookings.length === 0 ? (
         <div className="text-center py-12 text-gray-500">予約がありません</div>
@@ -350,6 +415,14 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
+                <th className="py-3 px-4 w-10">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-gray-300 text-[#C9A96E] focus:ring-[#C9A96E] cursor-pointer"
+                  />
+                </th>
                 <th className="text-left py-3 px-4 font-medium text-gray-500">日時</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-500">お名前</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-500">メニュー</th>
@@ -361,8 +434,17 @@ export default function BookingTable({ bookings, onUpdate }: BookingTableProps) 
             </thead>
             <tbody>
               {bookings.map((booking) => (
-                <tr key={booking.id} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                <tr key={booking.id}
+                  className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${selectedIds.has(booking.id) ? 'bg-red-50/50' : ''}`}
                   onClick={() => setDetailBooking(booking)}>
+                  <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(booking.id)}
+                      onChange={() => toggleSelect(booking.id)}
+                      className="w-4 h-4 rounded border-gray-300 text-[#C9A96E] focus:ring-[#C9A96E] cursor-pointer"
+                    />
+                  </td>
                   <td className="py-3 px-4">
                     <div className="font-medium text-gray-900">{booking.date}</div>
                     <div className="text-gray-500">{booking.time}〜</div>

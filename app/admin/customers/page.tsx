@@ -14,6 +14,8 @@ export default function CustomersPage() {
   const [form, setForm] = useState({ name: '', phone: '', email: '', gender: '', birthday: '', memo: '', referral_source: '' });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
   const limit = 20;
 
   const fetchCustomers = useCallback(async () => {
@@ -31,6 +33,7 @@ export default function CustomersPage() {
 
   useEffect(() => {
     setLoading(true);
+    setSelectedIds(new Set());
     fetchCustomers();
   }, [fetchCustomers]);
 
@@ -54,18 +57,62 @@ export default function CustomersPage() {
       }
       setShowForm(false);
       setForm({ name: '', phone: '', email: '', gender: '', birthday: '', memo: '', referral_source: '' });
-      setMessage('顧客を登録しました');
-      setTimeout(() => setMessage(''), 3000);
+      showMsg('顧客を登録しました');
       await fetchCustomers();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : '登録に失敗しました');
-      setTimeout(() => setMessage(''), 3000);
+      showMsg(err instanceof Error ? err.message : '登録に失敗しました');
     } finally {
       setSaving(false);
     }
   };
 
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`${selectedIds.size}件の顧客を削除しますか？\n関連するカルテ・回数券も削除されます。この操作は取り消せません。`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/customers/batch-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || '削除に失敗しました');
+      }
+      showMsg(`${selectedIds.size}件の顧客を削除しました`);
+      setSelectedIds(new Set());
+      await fetchCustomers();
+    } catch (err) {
+      showMsg(err instanceof Error ? err.message : '削除に失敗しました');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === customers.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(customers.map(c => c.id)));
+    }
+  };
+
+  const showMsg = (msg: string) => {
+    setMessage(msg);
+    setTimeout(() => setMessage(''), 3000);
+  };
+
   const totalPages = Math.ceil(total / limit);
+  const isAllSelected = customers.length > 0 && selectedIds.size === customers.length;
 
   return (
     <div>
@@ -83,7 +130,7 @@ export default function CustomersPage() {
       </div>
 
       {message && (
-        <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-lg text-sm">{message}</div>
+        <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-lg text-sm animate-fadeIn">{message}</div>
       )}
 
       {/* Search */}
@@ -105,6 +152,22 @@ export default function CustomersPage() {
         </div>
       </form>
 
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between animate-fadeIn">
+          <span className="text-sm text-red-700 font-medium">
+            {selectedIds.size}件選択中
+          </span>
+          <button
+            onClick={handleBatchDelete}
+            disabled={deleting}
+            className="px-4 py-1.5 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50 transition-colors"
+          >
+            {deleting ? '削除中...' : `${selectedIds.size}件を削除`}
+          </button>
+        </div>
+      )}
+
       {/* Customer List */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
@@ -121,6 +184,14 @@ export default function CustomersPage() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b">
                   <tr>
+                    <th className="px-4 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 rounded border-gray-300 text-[#C9A96E] focus:ring-[#C9A96E] cursor-pointer"
+                      />
+                    </th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">名前</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">電話番号</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">メール</th>
@@ -132,7 +203,15 @@ export default function CustomersPage() {
                 </thead>
                 <tbody>
                   {customers.map((c) => (
-                    <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <tr key={c.id} className={`border-b last:border-0 hover:bg-gray-50 ${selectedIds.has(c.id) ? 'bg-red-50/50' : ''}`}>
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(c.id)}
+                          onChange={() => toggleSelect(c.id)}
+                          className="w-4 h-4 rounded border-gray-300 text-[#C9A96E] focus:ring-[#C9A96E] cursor-pointer"
+                        />
+                      </td>
                       <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{c.phone}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{c.email || '-'}</td>
@@ -166,24 +245,31 @@ export default function CustomersPage() {
             {/* Mobile cards */}
             <div className="md:hidden divide-y">
               {customers.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/admin/customers/${c.id}`}
-                  className="block p-4 hover:bg-gray-50"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-gray-900">{c.name}</p>
-                      <p className="text-sm text-gray-500">{c.phone}</p>
+                <div key={c.id} className={`flex items-center gap-3 p-4 ${selectedIds.has(c.id) ? 'bg-red-50/50' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(c.id)}
+                    onChange={() => toggleSelect(c.id)}
+                    className="w-4 h-4 rounded border-gray-300 text-[#C9A96E] focus:ring-[#C9A96E] cursor-pointer flex-shrink-0"
+                  />
+                  <Link
+                    href={`/admin/customers/${c.id}`}
+                    className="flex-1 min-w-0"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{c.name}</p>
+                        <p className="text-sm text-gray-500">{c.phone}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-2">
+                        <span className="text-sm text-[#A07840] font-medium">{c.visit_count}回来店</span>
+                        {c.last_visit && (
+                          <p className="text-xs text-gray-400">{c.last_visit}</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-sm text-[#A07840] font-medium">{c.visit_count}回来店</span>
-                      {c.last_visit && (
-                        <p className="text-xs text-gray-400">{c.last_visit}</p>
-                      )}
-                    </div>
-                  </div>
-                </Link>
+                  </Link>
+                </div>
               ))}
             </div>
           </>
