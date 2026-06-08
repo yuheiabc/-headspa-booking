@@ -28,14 +28,14 @@ export default async function HomePage() {
         className="py-16 px-4 text-center text-white"
         style={{ backgroundColor: salon.hero_color }}
       >
-        <p className="text-sm tracking-widest uppercase opacity-80 mb-2">{salon.salon_name_sub}</p>
-        <h1 className="text-3xl md:text-4xl font-bold mb-3">{salon.salon_name}</h1>
-        <p className="text-lg opacity-90">{salon.catch_copy}</p>
-        <p className="mt-4 text-sm opacity-70 max-w-md mx-auto">{salon.description}</p>
+        <p className="text-sm tracking-widest uppercase opacity-80 mb-2 animate-fadeIn">{salon.salon_name_sub}</p>
+        <h1 className="text-3xl md:text-4xl font-bold mb-3 animate-fadeIn" style={{ animationDelay: '100ms' }}>{salon.salon_name}</h1>
+        <p className="text-lg opacity-90 animate-fadeIn" style={{ animationDelay: '200ms' }}>{salon.catch_copy}</p>
+        <p className="mt-4 text-sm opacity-70 max-w-md mx-auto animate-fadeIn" style={{ animationDelay: '300ms' }}>{salon.description}</p>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-10">
-        <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">メニューを選択</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-6 text-center animate-fadeIn" style={{ animationDelay: '200ms' }}>メニューを選択</h2>
         <ServiceSelector services={services} primaryColor={salon.primary_color} />
       </main>
 

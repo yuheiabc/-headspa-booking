@@ -53,8 +53,25 @@ export default function AdminDashboard() {
 
   if (!stats) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-[#C9A96E] rounded-full" />
+      <div>
+        <div className="h-8 w-48 skeleton mb-6" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="rounded-xl p-5 bg-gray-50">
+              <div className="h-4 w-20 skeleton mb-2" />
+              <div className="h-8 w-16 skeleton" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-xl border p-6">
+          <div className="h-5 w-32 skeleton mb-4" />
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex justify-between py-3 border-b border-gray-50">
+              <div className="h-4 w-32 skeleton" />
+              <div className="h-4 w-24 skeleton" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -80,21 +97,28 @@ export default function AdminDashboard() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">直近の予約</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-gray-900">直近の予約</h2>
+          <a href="/admin/bookings" className="text-sm text-[#C9A96E] hover:underline">すべて見る →</a>
+        </div>
         {stats.recentBookings.length === 0 ? (
           <p className="text-gray-500 text-sm">予約がありません</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {stats.recentBookings.map((b) => (
-              <div key={b.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div>
-                  <span className="font-medium text-gray-900">{b.name}</span>
-                  <span className="text-sm text-gray-500 ml-3">{b.service_name}</span>
+              <a key={b.id} href="/admin/bookings"
+                className="flex items-center justify-between py-3 px-3 -mx-3 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[#C9A96E]/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-[#A07840]">{b.time}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-900">{b.name}</span>
+                    <span className="text-sm text-gray-500 ml-2">{b.service_name}</span>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-500">
-                  {b.date} {b.time}
-                </div>
-              </div>
+                <div className="text-sm text-gray-400">{b.date}</div>
+              </a>
             ))}
           </div>
         )}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbGet, dbRun } from '@/lib/db';
+import { dbGet, dbRun, dbBatch } from '@/lib/db';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +10,7 @@ const updateServiceSchema = z.object({
   price: z.number().int().min(0).optional(),
   description: z.string().max(50).optional(),
   detail: z.string().optional(),
+  image_url: z.string().optional(),
   is_active: z.boolean().optional(),
   sort_order: z.number().int().optional(),
 });
@@ -66,6 +67,7 @@ export async function PUT(
     if (result.data.price !== undefined) updates.price = result.data.price;
     if (result.data.description !== undefined) updates.description = result.data.description;
     if (result.data.detail !== undefined) updates.detail = result.data.detail;
+    if (result.data.image_url !== undefined) updates.image_url = result.data.image_url;
     if (result.data.is_active !== undefined) updates.is_active = result.data.is_active ? 1 : 0;
     if (result.data.sort_order !== undefined) updates.sort_order = result.data.sort_order;
 
@@ -79,10 +81,13 @@ export async function PUT(
     const values: unknown[] = fields.map((f) => updates[f]);
     values.push(now, id);
 
-    await dbRun(`UPDATE services SET ${setClause}, updated_at = ? WHERE id = ?`, values);
+    const batchResults = await dbBatch([
+      { sql: `UPDATE services SET ${setClause}, updated_at = ? WHERE id = ?`, args: values },
+      { sql: 'SELECT * FROM services WHERE id = ?', args: [id] },
+    ]);
 
-    const updated = await dbGet<Record<string, unknown>>('SELECT * FROM services WHERE id = ?', [id]);
-    return NextResponse.json({ ...updated, is_active: Boolean(updated!.is_active) }, { headers: noCacheHeaders });
+    const updated = batchResults[1].rows[0] as Record<string, unknown>;
+    return NextResponse.json({ ...updated, is_active: Boolean(updated.is_active) }, { headers: noCacheHeaders });
   } catch (err) {
     console.error('PUT /api/settings/services/[id] error:', err);
     return NextResponse.json({ error: 'メニューの更新に失敗しました' }, { status: 500, headers: noCacheHeaders });

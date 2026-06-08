@@ -34,7 +34,26 @@ function CompletePageInner() {
   const primaryColor = salon?.primary_color || '#C9A96E';
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
+      <header className="py-4 px-4 border-b border-gray-100 bg-white">
+        <div className="max-w-md mx-auto flex items-center">
+          <a
+            href="/"
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors mr-auto"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            トップへ
+          </a>
+          <span className="text-xl font-bold" style={{ color: primaryColor }}>
+            {salon?.logo_text || 'HeadSpa'}
+          </span>
+          <div className="ml-auto w-16" />
+        </div>
+      </header>
+
+      <div className="flex items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 57px)' }}>
       <div className="max-w-md w-full text-center">
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"
@@ -78,6 +97,7 @@ function CompletePageInner() {
             </a>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

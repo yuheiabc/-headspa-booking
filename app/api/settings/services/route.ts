@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbAll, dbGet, dbRun } from '@/lib/db';
+import { dbAll, dbGet, dbRun, dbBatch } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
@@ -11,6 +11,7 @@ const serviceSchema = z.object({
   price: z.number().int().min(0, '料金は0以上を指定してください'),
   description: z.string().max(50, '説明は50文字以内で入力してください').optional().default(''),
   detail: z.string().optional().default(''),
+  image_url: z.string().optional().default(''),
   is_active: z.boolean().optional().default(true),
 });
 
@@ -54,24 +55,16 @@ export async function POST(request: NextRequest) {
     const maxOrder = await dbGet<{ max_order: number | null }>('SELECT MAX(sort_order) as max_order FROM services');
     const sortOrder = (maxOrder?.max_order ?? 0) + 1;
 
-    await dbRun(`
-      INSERT INTO services (id, name, duration, price, description, detail, is_active, sort_order, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      id,
-      result.data.name,
-      result.data.duration,
-      result.data.price,
-      result.data.description,
-      result.data.detail,
-      result.data.is_active ? 1 : 0,
-      sortOrder,
-      now,
-      now
+    const batchResults = await dbBatch([
+      {
+        sql: `INSERT INTO services (id, name, duration, price, description, detail, image_url, is_active, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [id, result.data.name, result.data.duration, result.data.price, result.data.description, result.data.detail, result.data.image_url, result.data.is_active ? 1 : 0, sortOrder, now, now],
+      },
+      { sql: 'SELECT * FROM services WHERE id = ?', args: [id] },
     ]);
 
-    const service = await dbGet<Record<string, unknown>>('SELECT * FROM services WHERE id = ?', [id]);
-    return NextResponse.json({ ...service, is_active: Boolean(service!.is_active) }, { status: 201, headers: noCacheHeaders });
+    const service = batchResults[1].rows[0] as Record<string, unknown>;
+    return NextResponse.json({ ...service, is_active: Boolean(service.is_active) }, { status: 201, headers: noCacheHeaders });
   } catch (err) {
     console.error('POST /api/settings/services error:', err);
     return NextResponse.json({ error: 'メニューの追加に失敗しました' }, { status: 500, headers: noCacheHeaders });
@@ -93,12 +86,15 @@ export async function PUT(request: NextRequest) {
 
     const now = new Date().toISOString();
 
-    for (const order of body.orders as Array<{ id: string; sort_order: number }>) {
-      await dbRun('UPDATE services SET sort_order = ?, updated_at = ? WHERE id = ?', [order.sort_order, now, order.id]);
-    }
+    const statements = (body.orders as Array<{ id: string; sort_order: number }>).map((order) => ({
+      sql: 'UPDATE services SET sort_order = ?, updated_at = ? WHERE id = ?',
+      args: [order.sort_order, now, order.id] as unknown[],
+    }));
+    statements.push({ sql: 'SELECT * FROM services ORDER BY sort_order ASC', args: [] });
 
-    const services = await dbAll('SELECT * FROM services ORDER BY sort_order ASC');
-    const mapped = (services as Array<Record<string, unknown>>).map((s) => ({
+    const batchResults = await dbBatch(statements);
+    const selectResult = batchResults[batchResults.length - 1];
+    const mapped = (selectResult.rows as Array<Record<string, unknown>>).map((s) => ({
       ...s,
       is_active: Boolean(s.is_active),
     }));

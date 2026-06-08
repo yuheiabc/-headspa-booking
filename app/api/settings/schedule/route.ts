@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbAll, dbRun } from '@/lib/db';
+import { dbAll, dbRun, dbBatch } from '@/lib/db';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -57,15 +57,15 @@ export async function PUT(request: NextRequest) {
 
     const now = new Date().toISOString();
 
-    for (const h of result.data) {
-      await dbRun(
-        'UPDATE business_hours SET is_open = ?, open_time = ?, close_time = ?, updated_at = ? WHERE day_of_week = ?',
-        [h.is_open ? 1 : 0, h.open_time, h.close_time, now, h.day_of_week]
-      );
-    }
+    const statements = result.data.map((h) => ({
+      sql: 'UPDATE business_hours SET is_open = ?, open_time = ?, close_time = ?, updated_at = ? WHERE day_of_week = ?',
+      args: [h.is_open ? 1 : 0, h.open_time, h.close_time, now, h.day_of_week] as unknown[],
+    }));
+    statements.push({ sql: 'SELECT * FROM business_hours ORDER BY day_of_week ASC', args: [] });
 
-    const updated = await dbAll('SELECT * FROM business_hours ORDER BY day_of_week ASC');
-    const mapped = (updated as Array<Record<string, unknown>>).map((h) => ({
+    const batchResults = await dbBatch(statements);
+    const selectResult = batchResults[batchResults.length - 1];
+    const mapped = (selectResult.rows as Array<Record<string, unknown>>).map((h) => ({
       ...h,
       is_open: Boolean(h.is_open),
     }));

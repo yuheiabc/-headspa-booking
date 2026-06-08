@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbGet, dbRun } from '@/lib/db';
+import { dbBatch } from '@/lib/db';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +26,11 @@ const noCacheHeaders = {
 
 export async function GET() {
   try {
-    const settings = await dbGet('SELECT * FROM salon_settings WHERE id = 1');
+    // Use batch with 'write' mode to force reading from primary
+    const batchResults = await dbBatch([
+      { sql: 'SELECT * FROM salon_settings WHERE id = 1' },
+    ]);
+    const settings = batchResults[0].rows[0];
     return NextResponse.json(settings, { headers: noCacheHeaders });
   } catch (err) {
     console.error('GET /api/settings/salon error:', err);
@@ -59,9 +63,14 @@ export async function PUT(request: NextRequest) {
     const now = new Date().toISOString();
     values.push(now);
 
-    await dbRun(`UPDATE salon_settings SET ${setClause}, updated_at = ? WHERE id = 1`, values);
+    const sql = `UPDATE salon_settings SET ${setClause}, updated_at = ? WHERE id = 1`;
 
-    const updated = await dbGet('SELECT * FROM salon_settings WHERE id = 1');
+    const batchResults = await dbBatch([
+      { sql, args: values },
+      { sql: 'SELECT * FROM salon_settings WHERE id = 1' },
+    ]);
+
+    const updated = batchResults[1].rows[0];
     return NextResponse.json(updated, { headers: noCacheHeaders });
   } catch (err) {
     console.error('PUT /api/settings/salon error:', err);

@@ -16,6 +16,7 @@ export default function ServiceForm({ service, onSave, onCancel }: ServiceFormPr
   const [price, setPrice] = useState(0);
   const [description, setDescription] = useState('');
   const [detail, setDetail] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -27,6 +28,7 @@ export default function ServiceForm({ service, onSave, onCancel }: ServiceFormPr
       setPrice(service.price);
       setDescription(service.description);
       setDetail(service.detail);
+      setImageUrl(service.image_url || '');
       setIsActive(service.is_active);
     }
   }, [service]);
@@ -51,6 +53,7 @@ export default function ServiceForm({ service, onSave, onCancel }: ServiceFormPr
         price,
         description: description.trim(),
         detail: detail.trim(),
+        image_url: imageUrl.trim(),
         is_active: isActive,
       });
     } finally {
@@ -120,6 +123,28 @@ export default function ServiceForm({ service, onSave, onCancel }: ServiceFormPr
           placeholder="50文字以内"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C9A96E]/50 focus:border-[#C9A96E] outline-none"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">メニュー画像URL</label>
+        <input
+          type="url"
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          placeholder="https://example.com/image.jpg"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C9A96E]/50 focus:border-[#C9A96E] outline-none"
+        />
+        <p className="mt-1 text-xs text-gray-400">Google Drive、Imgur、その他の画像URLを貼り付けてください</p>
+        {imageUrl && (
+          <div className="mt-2 relative w-32 h-20 rounded-lg overflow-hidden bg-gray-100">
+            <img
+              src={imageUrl}
+              alt="プレビュー"
+              className="w-full h-full object-cover"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          </div>
+        )}
       </div>
 
       <div>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbGet, dbRun } from '@/lib/db';
+import { dbGet, dbBatch } from '@/lib/db';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -64,10 +64,13 @@ export async function PUT(request: NextRequest) {
     const values: unknown[] = fields.map((f) => updates[f]);
     values.push(now);
 
-    await dbRun(`UPDATE booking_rules SET ${setClause}, updated_at = ? WHERE id = 1`, values);
+    const batchResults = await dbBatch([
+      { sql: `UPDATE booking_rules SET ${setClause}, updated_at = ? WHERE id = 1`, args: values },
+      { sql: 'SELECT * FROM booking_rules WHERE id = 1' },
+    ]);
 
-    const updated = await dbGet<Record<string, unknown>>('SELECT * FROM booking_rules WHERE id = 1');
-    return NextResponse.json({ ...updated, booking_open: Boolean(updated!.booking_open) }, { headers: noCacheHeaders });
+    const updated = batchResults[1].rows[0] as Record<string, unknown>;
+    return NextResponse.json({ ...updated, booking_open: Boolean(updated.booking_open) }, { headers: noCacheHeaders });
   } catch (err) {
     console.error('PUT /api/settings/booking-rules error:', err);
     return NextResponse.json({ error: '予約ルールの更新に失敗しました' }, { status: 500, headers: noCacheHeaders });
